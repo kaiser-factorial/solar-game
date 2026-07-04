@@ -1,0 +1,16 @@
+{
+  "id": "mars",
+  "name": "Mars",
+  "palette": { "ground": "#c1440e", "sky": "#1a0b08", "accent": "#ff8c5a" },
+  "terrain": { "generator": "hills", "seed": 42, "width": 220 },
+  "gravity": 0.38,
+  "collectibles": {
+    "treasure": { "id": "red-crystal", "name": "Red Crystal", "count": 12 },
+    "food": { "id": "cave-mushroom", "name": "Cave Mushroom", "heals": 1, "count": 5 }
+  },
+  "monsters": [
+    { "id": "dust-mite", "name": "Dust Mite", "hp": 2, "damage": 0.5, "behavior": "wander", "speed": 70, "count": 5 },
+    { "id": "rock-golem", "name": "Rock Golem", "hp": 4, "damage": 1, "behavior": "chase", "speed": 100, "count": 4 }
+  ],
+  "boss": { "id": "the-red-baron", "name": "The Red Baron", "hp": 20, "damage": 1, "speed": 90 }
+}

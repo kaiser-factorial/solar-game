@@ -1,0 +1,58 @@
+import Phaser from 'phaser';
+import { BALANCE } from '../systems/balance';
+import { state } from '../systems/save';
+import type { InputIntent } from '../input/types';
+
+export class Player extends Phaser.Physics.Arcade.Sprite {
+  facing = 1;
+  private nextAttackAt = 0;
+  private invulnUntil = 0;
+
+  constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
+    super(scene, x, y, texture);
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+    this.setCollideWorldBounds(true);
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setSize(20, 42);
+    body.setOffset(8, 4);
+    this.setDepth(5);
+  }
+
+  /** Returns true when this frame starts an attack swing. */
+  applyIntent(intent: InputIntent, time: number): boolean {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (intent.moveX !== 0) {
+      this.facing = intent.moveX > 0 ? 1 : -1;
+      this.setFlipX(this.facing < 0);
+    }
+    body.setVelocityX(intent.moveX * BALANCE.playerSpeed);
+    if (intent.jump && body.blocked.down) {
+      // Same jump height on every planet; gravity shapes the arc.
+      body.setVelocityY(
+        -Math.sqrt(2 * this.scene.physics.world.gravity.y * BALANCE.jumpHeight)
+      );
+    }
+    if (intent.attack && time >= this.nextAttackAt) {
+      this.nextAttackAt = time + BALANCE.attackCooldownMs;
+      return true;
+    }
+    return false;
+  }
+
+  hurt(amount: number, fromX: number, time: number): 'dead' | 'hit' | 'immune' {
+    if (time < this.invulnUntil) return 'immune';
+    this.invulnUntil = time + BALANCE.iframesMs;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setVelocity(this.x < fromX ? -BALANCE.knockback : BALANCE.knockback, -220);
+    this.scene.tweens.add({
+      targets: this,
+      alpha: 0.25,
+      yoyo: true,
+      repeat: 5,
+      duration: BALANCE.iframesMs / 12,
+      onComplete: () => this.setAlpha(1),
+    });
+    return state.damage(amount) ? 'dead' : 'hit';
+  }
+}

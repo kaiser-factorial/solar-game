@@ -1,0 +1,16 @@
+{
+  "id": "moon",
+  "name": "The Moon",
+  "palette": { "ground": "#9aa0ae", "sky": "#0b0d1a", "accent": "#d8dce8" },
+  "terrain": { "generator": "hills", "seed": 7, "width": 190 },
+  "gravity": 0.17,
+  "collectibles": {
+    "treasure": { "id": "moon-silver", "name": "Moon Silver", "count": 10 },
+    "food": { "id": "star-berry", "name": "Star Berry", "heals": 1, "count": 5 }
+  },
+  "monsters": [
+    { "id": "moon-blob", "name": "Moon Blob", "hp": 2, "damage": 0.5, "behavior": "wander", "speed": 55, "count": 5 },
+    { "id": "crater-crawler", "name": "Crater Crawler", "hp": 3, "damage": 0.5, "behavior": "chase", "speed": 85, "count": 3 }
+  ],
+  "boss": { "id": "the-moonster", "name": "The Moonster", "hp": 14, "damage": 1, "speed": 70 }
+}
