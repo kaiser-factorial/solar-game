@@ -38,26 +38,18 @@ auth via Supabase ("catchall" project — table setup + RLS done; **still
 pending: turn off "Confirm email" in that project's Auth settings**, otherwise
 sign-in returns no session).
 
-### Known bugs — reported by playtesting, not yet fixed
+### Recently fixed from playtesting
 
-1. **Stomp sometimes damages the player instead of the monster.** Jumping on
-   a monster occasionally registers as the player taking a hit rather than a
-   clean stomp, even when it visually looks like a from-above landing. Likely
-   a race/ordering issue between the stomp-detection overlap and the regular
-   damage overlap in `src/scenes/Planet.ts` (both are registered on the same
-   `player`↔`monsters` overlap pair — check whether the stomp velocity/position
-   check is too strict, or whether both callbacks can fire in the same frame).
-2. **Game froze on attacking The Moonster.** First reported attack against a
-   boss locked up the game. Not yet reproduced/diagnosed — needs a repro
-   (attack timing, boss HP at time of hit, browser console errors) before
-   guessing at a fix. Prime suspects: `src/entities/Boss.ts` (the `hit()` /
-   enrage path added when boss art shipped) or the overlap callback in
-   `src/scenes/Planet.ts` that calls `boss.hit()` and emits `ss-boss`.
+1. **Stomps now favor the player.** Jumping onto a monster uses Arcade body
+   bounds with a forgiving top-hit window, so visually from-above landings
+   squish the monster instead of damaging the player.
+2. **The Moonster first-swing freeze is fixed.** The boss slash overlap now
+   handles Phaser body-vs-sprite callback values, initializes slash hit-tracking
+   defensively, and disables the boss body immediately on defeat.
 
-Next session: reproduce both with the browser console open (or via
-`scripts/playtest.mjs`) before changing code — especially the freeze, since
-"attacked and froze" could be anything from an infinite loop in `Boss.act()`
-to an uncaught exception stopping the Phaser update loop silently.
+`scripts/playtest.mjs` now asserts both regressions: controlled stomp must damage
+or remove a monster, and the first keyboard swing against The Moonster must
+reduce boss HP without a page error.
 
 ### Where things live
 

@@ -64,16 +64,32 @@ try {
   // stomp test: drop the player onto a monster from above — it should take damage
   const stomp = await page.evaluate(async () => {
     const p = window.__game.scene.getScene('Planet');
-    const m = p.monsters.getChildren().find((x) => x.active);
-    if (!m) return 'no-monster';
-    const before = p.monsters.countActive();
-    const hpBefore = m.hp;
-    p.player.setPosition(m.x, m.y - 80);
-    p.player.setVelocity(0, 250);
-    await new Promise((r) => setTimeout(r, 1500));
-    return { before, after: p.monsters.countActive(), hpBefore, hpAfter: m.active ? m.hp : 'dead' };
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const m = p.monsters.getChildren().find((x) => x.active);
+      if (!m) return 'no-monster';
+      const before = p.monsters.countActive();
+      const hpBefore = m.hp;
+      m.def.speed = 0;
+      m.setVelocity(0, 0);
+      m.body.reset(m.x, m.y);
+      p.player.body.reset(m.x, m.y - 80);
+      p.player.setVelocity(0, 250);
+      await new Promise((r) => setTimeout(r, 900));
+      const result = { attempt, before, after: p.monsters.countActive(), hpBefore, hpAfter: m.active ? m.hp : 'dead' };
+      if (result.after === result.before - 1 || result.hpAfter === 'dead' || result.hpAfter < result.hpBefore) {
+        return result;
+      }
+    }
+    return 'no-stomp-hit';
   });
   console.log('STOMP-TEST', JSON.stringify(stomp));
+  if (
+    stomp === 'no-monster' ||
+    stomp === 'no-stomp-hit' ||
+    (stomp.after !== stomp.before - 1 && !(typeof stomp.hpAfter === 'number' && stomp.hpAfter < stomp.hpBefore))
+  ) {
+    throw new Error(`Stomp regression: ${JSON.stringify(stomp)}`);
+  }
 
   // teleport to the boss arena to test the fight
   await page.evaluate(() => {
@@ -84,11 +100,41 @@ try {
   await sleep(1800);
   await shot('07-moon-boss');
 
+  const firstBossSwing = await page.evaluate(async () => {
+    const p = window.__game.scene.getScene('Planet');
+    const boss = p.boss;
+    if (!boss) return 'no-boss';
+    p.player.setPosition(boss.x - 48, boss.y + 14);
+    p.player.setVelocity(0, 0);
+    p.player.facing = 1;
+    const before = boss.hp;
+    await new Promise((r) => setTimeout(r, 80));
+    return { before, after: boss.hp, active: boss.active };
+  });
+  await page.keyboard.down('KeyX');
+  await sleep(80);
+  await page.keyboard.up('KeyX');
+  await sleep(450);
+  const firstBossSwingResult = await page.evaluate((beforeResult) => {
+    const p = window.__game.scene.getScene('Planet');
+    const boss = p.boss;
+    if (!boss || beforeResult === 'no-boss') return beforeResult;
+    return { ...beforeResult, after: boss.hp, active: boss.active };
+  }, firstBossSwing);
+  console.log('BOSS-FIRST-SWING', JSON.stringify(firstBossSwingResult));
+  if (
+    firstBossSwingResult === 'no-boss' ||
+    !firstBossSwingResult.active ||
+    firstBossSwingResult.after !== firstBossSwingResult.before - 1
+  ) {
+    throw new Error(`Boss first-swing regression: ${JSON.stringify(firstBossSwingResult)}`);
+  }
+
   // hammer the boss with direct hits to verify the defeat flow
   await page.evaluate(() => {
     const p = window.__game.scene.getScene('Planet');
     if (p.boss) {
-      for (let i = 0; i < p.boss.maxHp - 1; i++) p.boss.hit(0);
+      while (p.boss.hp > 1) p.boss.hit(0);
     }
   });
   await page.keyboard.press('KeyX');

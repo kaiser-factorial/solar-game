@@ -9,6 +9,8 @@ export const BALANCE = {
   knockback: 260,
   stompDamage: 2, // squish the lil guys in one hop
   stompBounce: 380,
+  stompMinFallSpeed: 20,
+  stompTopTolerance: 22,
   startHearts: 3,
   maxHeartsCap: 10,
   monsterAggroRange: 300,
