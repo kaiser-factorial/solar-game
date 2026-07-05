@@ -127,7 +127,7 @@ export class PlanetScene extends Phaser.Scene {
     // --- boss (skipped if already beaten) ---
     this.arenaX = (cols - 24) * TILE;
     if (!state.save.planets[this.planetId]?.bossDefeated) {
-      this.boss = new Boss(this, (cols - 8) * TILE, groundTop(cols - 8) - 60, def.boss, accent);
+      this.boss = new Boss(this, (cols - 8) * TILE, groundTop(cols - 8) - 70, def.boss, accent);
       this.boss.setCollideWorldBounds(true);
     }
 

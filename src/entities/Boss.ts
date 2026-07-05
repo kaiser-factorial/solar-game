@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BALANCE } from '../systems/balance';
 import type { BossDef } from '../content';
 import type { Player } from './Player';
+import { ensureBossTexture } from '../systems/textures';
 
 /** Walks at you; telegraphs (flashing pause), then charges. Phase 2 at half HP: faster, shorter rests. */
 export class Boss extends Phaser.Physics.Arcade.Sprite {
@@ -12,30 +13,75 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private mode: 'walk' | 'telegraph' | 'charge' = 'walk';
   private modeUntil = 0;
   private chargeDir = 1;
+  private enraged = false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private glow: any = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, def: BossDef, tint: number) {
-    super(scene, x, y, 'boss');
+    super(scene, x, y, ensureBossTexture(scene, def.id));
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.def = def;
     this.hp = this.maxHp = def.hp;
-    this.setTint(tint);
     this.setDepth(4);
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(78, 46);
-    body.setOffset(5, 24);
+    const bw = Math.round(this.width * 0.7);
+    const bh = Math.round(this.height * 0.5);
+    body.setSize(bw, bh);
+    body.setOffset(Math.round((this.width - bw) / 2), this.height - bh);
+    // Menacing aura (WebGL only; art still reads great on canvas).
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.glow = (this as any).postFX?.addGlow?.(tint, 5, 0, false, 0.1, 14);
+    } catch {
+      /* no postFX pipeline — skip */
+    }
   }
 
   wake(time: number): void {
     if (this.awake) return;
     this.awake = true;
     this.modeUntil = time + 1800;
+    // dramatic entrance punch
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.18,
+      scaleY: 1.18,
+      yoyo: true,
+      repeat: 1,
+      duration: 160,
+      ease: 'Quad.out',
+    });
+  }
+
+  private enrage(): void {
+    this.enraged = true;
+    this.setTint(0xff6b6b);
+    if (this.glow) {
+      this.scene.tweens.add({
+        targets: this.glow,
+        outerStrength: 10,
+        duration: 300,
+        yoyo: true,
+        repeat: 2,
+      });
+    }
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.14,
+      scaleY: 1.14,
+      yoyo: true,
+      repeat: 3,
+      duration: 110,
+      onComplete: () => this.clearTint(),
+    });
   }
 
   act(time: number, player: Player): void {
     const body = this.body as Phaser.Physics.Arcade.Body | null;
     if (!body || !this.active || !this.awake) return;
     const phase2 = this.hp <= this.maxHp / 2;
+    if (phase2 && !this.enraged) this.enrage();
     const speed = this.def.speed * (phase2 ? 1.5 : 1);
 
     switch (this.mode) {

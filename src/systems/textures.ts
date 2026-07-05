@@ -204,3 +204,199 @@ export function ensurePlayerTexture(scene: Phaser.Scene, ch: Character): string 
   g.destroy();
   return key;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Extravagant per-boss art (PLAN.md §3.4). Each boss gets its own fully      */
+/*  colored sprite drawn once — big, characterful, and drawn back-to-front.    */
+/*  Add a new planet's boss by adding a drawer to BOSS_ART, keyed by boss id.  */
+/* -------------------------------------------------------------------------- */
+
+export const BOSS_W = 128;
+export const BOSS_H = 112;
+
+// THE MOONSTER — a craggy moon-rock golem crowned with glowing shards.
+function drawMoonster(g: Phaser.GameObjects.Graphics): void {
+  // moon-shard crystals jutting from the shoulders (ties to the game's theme)
+  const shard = (cx: number, cy: number, s: number) => {
+    g.fillStyle(0xc7cde0);
+    g.fillPoints(
+      [
+        { x: cx, y: cy - s },
+        { x: cx + s * 0.55, y: cy },
+        { x: cx, y: cy + s },
+        { x: cx - s * 0.55, y: cy },
+      ],
+      true
+    );
+    g.fillStyle(0xeff3ff, 0.9);
+    g.fillTriangle(cx, cy - s, cx + s * 0.55, cy, cx, cy);
+  };
+  shard(12, 74, 22);
+  shard(116, 74, 22);
+  shard(64, 6, 14);
+
+  // jagged rock horn-crown
+  g.fillStyle(0x7f8698);
+  g.fillTriangle(20, 46, 30, 8, 44, 46);
+  g.fillTriangle(50, 42, 64, 2, 78, 42);
+  g.fillTriangle(84, 46, 98, 10, 108, 46);
+  g.fillStyle(0x9aa0b2, 0.9);
+  g.fillTriangle(30, 8, 34, 11, 44, 46);
+  g.fillTriangle(64, 2, 68, 6, 78, 42);
+  g.fillTriangle(98, 10, 102, 14, 108, 46);
+
+  // lumpy craggy body mass
+  g.fillStyle(0x8f96a8);
+  g.fillEllipse(64, 74, 116, 76);
+  g.fillCircle(26, 56, 18);
+  g.fillCircle(50, 48, 20);
+  g.fillCircle(80, 48, 20);
+  g.fillCircle(104, 56, 18);
+  g.fillCircle(34, 98, 16);
+  g.fillCircle(64, 104, 18);
+  g.fillCircle(96, 98, 16);
+
+  // top-lit highlights
+  g.fillStyle(0xb0b6c8, 0.7);
+  g.fillEllipse(46, 50, 40, 14);
+  g.fillEllipse(88, 52, 30, 12);
+
+  // craters
+  g.fillStyle(0x6f7688);
+  g.fillEllipse(38, 66, 22, 13);
+  g.fillEllipse(92, 60, 17, 11);
+  g.fillCircle(66, 40, 7);
+  g.fillCircle(24, 84, 6);
+  g.fillStyle(0x5b6274);
+  g.fillEllipse(38, 67, 12, 7);
+  g.fillEllipse(92, 61, 9, 6);
+
+  // angry rock brows
+  g.fillStyle(0x565d6f);
+  g.fillTriangle(34, 56, 60, 66, 60, 60);
+  g.fillTriangle(94, 56, 68, 66, 68, 60);
+
+  // glowing cyan eyes
+  g.fillStyle(0x7fd4ff, 0.4);
+  g.fillCircle(48, 70, 13);
+  g.fillCircle(80, 70, 13);
+  g.fillStyle(0xb6f0ff);
+  g.fillCircle(48, 70, 8);
+  g.fillCircle(80, 70, 8);
+  g.fillStyle(0x0b2233);
+  g.fillCircle(48, 72, 4);
+  g.fillCircle(80, 72, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(46, 68, 2);
+  g.fillCircle(78, 68, 2);
+
+  // jagged rock grin
+  g.fillStyle(0x24293a);
+  g.fillEllipse(64, 94, 54, 16);
+  g.fillStyle(0xe6eaf4);
+  for (let i = 0; i < 6; i++) {
+    const x = 42 + i * 8;
+    g.fillTriangle(x, 86, x + 8, 86, x + 4, 96);
+    g.fillTriangle(x + 4, 102, x + 12, 102, x + 8, 92);
+  }
+}
+
+// THE RED BARON — a fiery horned Martian warlord with a lava-cracked hide.
+function drawRedBaron(g: Phaser.GameObjects.Graphics): void {
+  // dark cape/collar behind
+  g.fillStyle(0x611105);
+  g.fillTriangle(8, 96, 64, 40, 120, 96);
+  g.fillTriangle(4, 70, 30, 96, 24, 50);
+  g.fillTriangle(124, 70, 98, 96, 104, 50);
+
+  // big curved horns
+  g.fillStyle(0xe0621c);
+  g.fillTriangle(30, 44, 4, 2, 40, 40);
+  g.fillTriangle(98, 44, 124, 2, 88, 40);
+  g.fillStyle(0xffa040, 0.9);
+  g.fillTriangle(4, 2, 12, 6, 40, 40);
+  g.fillTriangle(124, 2, 116, 6, 88, 40);
+
+  // crown of red crystals
+  g.fillStyle(0xff5533);
+  g.fillTriangle(48, 34, 54, 18, 60, 34);
+  g.fillTriangle(58, 32, 64, 12, 70, 32);
+  g.fillTriangle(68, 34, 74, 18, 80, 34);
+
+  // main fiery body + pointed chin
+  g.fillStyle(0xbe400f);
+  g.fillEllipse(64, 74, 112, 76);
+  g.fillTriangle(28, 82, 100, 82, 64, 112);
+  g.fillStyle(0x7f2609);
+  g.fillEllipse(64, 90, 96, 36);
+
+  // shoulder spikes
+  g.fillStyle(0xbe400f);
+  g.fillTriangle(10, 60, 22, 48, 26, 74);
+  g.fillTriangle(118, 60, 106, 48, 102, 74);
+
+  // molten lava cracks
+  g.lineStyle(3, 0xff9a2e, 1);
+  g.lineBetween(40, 58, 34, 92);
+  g.lineBetween(40, 74, 30, 78);
+  g.lineBetween(90, 58, 96, 92);
+  g.lineBetween(90, 74, 100, 78);
+  g.lineBetween(64, 96, 64, 110);
+  g.lineStyle(2, 0xffd24a, 0.9);
+  g.lineBetween(41, 60, 36, 84);
+
+  // flame tufts on the shoulders
+  const flame = (x: number) => {
+    g.fillStyle(0xff6a1a);
+    g.fillTriangle(x - 8, 60, x + 8, 60, x, 34);
+    g.fillStyle(0xffc23a);
+    g.fillTriangle(x - 4, 58, x + 4, 58, x, 42);
+  };
+  flame(18);
+  flame(110);
+
+  // heavy angry brows
+  g.fillStyle(0x4a0d02);
+  g.fillTriangle(34, 54, 60, 66, 60, 58);
+  g.fillTriangle(94, 54, 68, 66, 68, 58);
+
+  // glowing yellow slit eyes
+  g.fillStyle(0xffcc33, 0.45);
+  g.fillCircle(48, 70, 12);
+  g.fillCircle(80, 70, 12);
+  g.fillStyle(0xffe680);
+  g.fillCircle(48, 70, 8);
+  g.fillCircle(80, 70, 8);
+  g.fillStyle(0x2a0a00);
+  g.fillEllipse(48, 71, 5, 10);
+  g.fillEllipse(80, 71, 5, 10);
+  g.fillStyle(0xffffff);
+  g.fillCircle(46, 67, 2);
+  g.fillCircle(78, 67, 2);
+
+  // fanged maw
+  g.fillStyle(0x1a0500);
+  g.fillEllipse(64, 94, 50, 16);
+  g.fillStyle(0xfff0d6);
+  g.fillTriangle(46, 86, 54, 86, 50, 98);
+  g.fillTriangle(74, 86, 82, 86, 78, 98);
+  g.fillTriangle(58, 102, 66, 102, 62, 90);
+}
+
+const BOSS_ART: Record<string, (g: Phaser.GameObjects.Graphics) => void> = {
+  'the-moonster': drawMoonster,
+  'the-red-baron': drawRedBaron,
+};
+
+/** Build (or reuse) a boss's sprite. Falls back to the generic blob for unknown ids. */
+export function ensureBossTexture(scene: Phaser.Scene, bossId: string): string {
+  const key = `boss-${bossId}`;
+  if (scene.textures.exists(key)) return key;
+  const drawer = BOSS_ART[bossId];
+  if (!drawer) return 'boss';
+  const g = scene.add.graphics();
+  drawer(g);
+  g.generateTexture(key, BOSS_W, BOSS_H);
+  g.destroy();
+  return key;
+}
