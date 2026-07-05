@@ -21,6 +21,7 @@ export class CharacterCreatorScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.game.events.emit('ss-scene', 'creator');
     sprinkleStars(this);
     this.ch = state.character ? { ...state.character } : { skin: 0, hair: 1, suit: 2, visor: 0 };
 

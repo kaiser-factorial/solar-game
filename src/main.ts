@@ -6,6 +6,7 @@ import { StarMapScene } from './scenes/StarMap';
 import { PlanetScene } from './scenes/Planet';
 import { HUDScene } from './scenes/HUD';
 import { SettingsScene } from './scenes/Settings';
+import { mountReactOverlay } from './react/mount';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -30,3 +31,5 @@ const game = new Phaser.Game({
 
 // Debug/test handle (also handy for tuning with the nephews from the console).
 (window as unknown as { __game: Phaser.Game }).__game = game;
+
+mountReactOverlay(game);

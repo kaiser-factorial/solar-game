@@ -9,6 +9,8 @@
       html, body { margin: 0; height: 100%; background: #05060f; overflow: hidden; }
       #game { width: 100vw; height: 100vh; }
       canvas { image-rendering: pixelated; }
+      /* Puxel CRT scanlines over the whole game, purely cosmetic. */
+      #crt-overlay { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
       .ss-form {
         display: flex; flex-direction: column; gap: 14px; align-items: center;
         font-family: "Courier New", monospace; width: 340px;
@@ -32,6 +34,7 @@
   </head>
   <body>
     <div id="game"></div>
+    <div id="crt-overlay" class="px-crt"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

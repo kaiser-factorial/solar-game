@@ -43,6 +43,7 @@ export class PlanetScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.game.events.emit('ss-scene', 'planet');
     this.def = PLANETS[this.planetId];
     const def = this.def;
     const accent = hexToInt(def.palette.accent);
@@ -381,6 +382,7 @@ export class PlanetScene extends Phaser.Scene {
       orb.destroy();
       state.addOrb(this.planetId);
       audio.sfx('orb');
+      this.game.events.emit('ss-celebrate', { variant: 'confetti', tone: 'success' });
       this.banner(`${this.def.name.toUpperCase()} SHARD GET!  +1 ♥`, ORB_COLORS[this.planetId]);
       toast(this, 'Press E at your rocket to fly home!');
     });

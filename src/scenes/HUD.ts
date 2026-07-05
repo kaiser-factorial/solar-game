@@ -38,13 +38,10 @@ export class HUDScene extends Phaser.Scene {
     });
   }
 
+  // Hearts are the React <HealthBar> overlay (src/react/GameOverlay.tsx) — this
+  // row now only carries shard trophies + the treasure/food counters below.
   private render(): void {
     this.row.removeAll(true);
-    const h = state.save.hearts;
-    for (let i = 0; i < h.max; i++) {
-      const key = h.current >= i + 1 ? 'heart-full' : h.current >= i + 0.5 ? 'heart-half' : 'heart-empty';
-      this.row.add(this.add.image(24 + i * 26, 20, key));
-    }
     state.save.orbs.forEach((id, i) => {
       this.row.add(this.add.image(936 - i * 30, 20, 'orb').setTint(ORB_COLORS[id] ?? 0xffffff));
     });

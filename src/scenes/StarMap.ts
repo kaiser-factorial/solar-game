@@ -50,6 +50,7 @@ export class StarMapScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.game.events.emit('ss-scene', 'starmap');
     this.scene.stop('HUD'); // safety net — the HUD belongs to planets only
     this.hovered = null;
     this.positions = {};
@@ -107,21 +108,21 @@ export class StarMapScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-M', () => {
       toast(this, audio.toggle() ? 'Sound ON' : 'Sound OFF');
     });
-    this.events.on(Phaser.Scenes.Events.WAKE, () => this.drawStatusRow());
+    this.events.on(Phaser.Scenes.Events.WAKE, () => {
+      this.game.events.emit('ss-scene', 'starmap');
+      this.drawStatusRow();
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.setDefaultCursor('default'));
 
     audio.music('map');
   }
 
+  // Hearts are the React <HealthBar> overlay (src/react/GameOverlay.tsx) —
+  // this row now only carries the shard/orb trophies.
   private statusRow?: Phaser.GameObjects.Container;
   private drawStatusRow(): void {
     this.statusRow?.destroy();
     const c = this.add.container(0, 0).setDepth(10);
-    const h = state.save.hearts;
-    for (let i = 0; i < h.max; i++) {
-      const key = h.current >= i + 1 ? 'heart-full' : h.current >= i + 0.5 ? 'heart-half' : 'heart-empty';
-      c.add(this.add.image(24 + i * 26, 72, key));
-    }
     state.save.orbs.forEach((id, i) => {
       c.add(this.add.image(932 - i * 30, 66, 'orb').setTint(ORB_COLORS[id] ?? 0xffffff));
     });

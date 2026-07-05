@@ -7,6 +7,7 @@ export const BALANCE = {
   attackReach: 40,
   iframesMs: 1000,
   knockback: 260,
+  hitstunMs: 220, // player's own held-direction input is briefly suppressed so knockback is actually visible
   stompDamage: 2, // squish the lil guys in one hop
   stompBounce: 380,
   stompMinFallSpeed: 20,

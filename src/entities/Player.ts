@@ -8,6 +8,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   facing = 1;
   private nextAttackAt = 0;
   private invulnUntil = 0;
+  private hitstunUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
     super(scene, x, y, texture);
@@ -27,7 +28,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.facing = intent.moveX > 0 ? 1 : -1;
       this.setFlipX(this.facing < 0);
     }
-    body.setVelocityX(intent.moveX * BALANCE.playerSpeed);
+    // Skip the movement override during hitstun — otherwise this line stomps
+    // the knockback velocity hurt() just set, on the very next frame.
+    if (time >= this.hitstunUntil) {
+      body.setVelocityX(intent.moveX * BALANCE.playerSpeed);
+    }
     if (intent.jump && body.blocked.down) {
       // Same jump height on every planet; gravity shapes the arc.
       body.setVelocityY(
@@ -45,6 +50,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   hurt(amount: number, fromX: number, time: number): 'dead' | 'hit' | 'immune' {
     if (time < this.invulnUntil) return 'immune';
     this.invulnUntil = time + BALANCE.iframesMs;
+    this.hitstunUntil = time + BALANCE.hitstunMs;
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(this.x < fromX ? -BALANCE.knockback : BALANCE.knockback, -220);
     this.scene.tweens.add({
