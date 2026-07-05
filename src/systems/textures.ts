@@ -94,7 +94,7 @@ export function makeCoreTextures(scene: Phaser.Scene): void {
   g.fillTriangle(10, 0, 20, 8, 10, 20);
   gen('gem', 20, 20);
 
-  // food (little mushroom/berry hybrid — reads as "snack")
+  // food (generic fallback — little mushroom/berry hybrid)
   g.fillStyle(0xfff2d8);
   g.fillRect(7, 9, 6, 8);
   g.fillStyle(0xff5e5e);
@@ -103,6 +103,89 @@ export function makeCoreTextures(scene: Phaser.Scene): void {
   g.fillCircle(6, 6, 2);
   g.fillCircle(13, 5, 2);
   gen('food', 20, 18);
+
+  // Per-planet fruits — each level's snack is a distinct shape, keyed by its
+  // food id (Planet.ts uses `food-<id>` when it exists, else the generic 'food').
+  const leaf = (x: number, y: number) => {
+    g.fillStyle(0x4fbf5a);
+    g.fillEllipse(x, y, 8, 4);
+  };
+  // moon — Star Berry: a soft silver-blue five-point star
+  {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 11 : 4.6;
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      pts.push({ x: 11 + Math.cos(a) * r, y: 11 + Math.sin(a) * r });
+    }
+    g.fillStyle(0xbcd0ff);
+    g.fillPoints(pts, true);
+    g.fillStyle(0xffffff, 0.9);
+    g.fillCircle(11, 10, 3);
+    gen('food-star-berry', 22, 22);
+  }
+  // mars — Cave Mushroom: red cap, cream stem, white spots
+  g.fillStyle(0xf3e4c4);
+  g.fillRect(8, 11, 6, 8);
+  g.fillStyle(0xd7472e);
+  g.fillEllipse(11, 8, 20, 12);
+  g.fillStyle(0xffe9c8);
+  g.fillCircle(7, 7, 2);
+  g.fillCircle(14, 6, 1.8);
+  g.fillCircle(11, 9, 1.6);
+  gen('food-cave-mushroom', 22, 22);
+  // earth — Honey Apple: round red apple, leaf + stem
+  g.fillStyle(0x6b3b1a);
+  g.fillRect(10, 2, 2, 5);
+  leaf(15, 4);
+  g.fillStyle(0xe23b3b);
+  g.fillCircle(11, 13, 8);
+  g.fillStyle(0xff8a7a, 0.7);
+  g.fillCircle(8, 10, 2.5);
+  gen('food-honey-apple', 22, 22);
+  // jupiter — Cloud Fruit: fluffy tan cloud puff with a pink berry
+  g.fillStyle(0xf5dcae);
+  g.fillCircle(7, 12, 5);
+  g.fillCircle(13, 12, 6);
+  g.fillCircle(11, 8, 5);
+  g.fillStyle(0xff7fa8);
+  g.fillCircle(11, 11, 3);
+  gen('food-cloud-fruit', 22, 20);
+  // saturn — Gold Dust Melon: round golden melon with darker stripes
+  g.fillStyle(0xe7c86a);
+  g.fillCircle(11, 12, 8.5);
+  g.fillStyle(0xbf9b3e);
+  for (let i = -2; i <= 2; i++) g.fillRect(11 + i * 4 - 0.75, 4, 1.5, 16);
+  g.fillStyle(0x6b3b1a);
+  g.fillRect(10, 3, 2, 3);
+  gen('food-gold-dust-melon', 22, 22);
+  // uranus — Glacier Mint: pale-cyan crystal diamond with a mint leaf
+  g.fillStyle(0xd6fbff);
+  g.fillPoints([{ x: 11, y: 2 }, { x: 19, y: 11 }, { x: 11, y: 21 }, { x: 3, y: 11 }], true);
+  g.fillStyle(0xffffff, 0.6);
+  g.fillTriangle(11, 2, 19, 11, 11, 11);
+  g.fillStyle(0x7fe6a6);
+  g.fillEllipse(15, 5, 7, 3.5);
+  gen('food-glacier-mint', 22, 22);
+  // neptune — Gale Plum: deep blue-purple plum with a leaf + seam
+  g.fillStyle(0x6b3b1a);
+  g.fillRect(10, 2, 2, 4);
+  leaf(15, 4);
+  g.fillStyle(0x7a5cc9);
+  g.fillCircle(11, 13, 8);
+  g.fillStyle(0x4c3388, 0.8);
+  g.fillRect(10.2, 6, 1.6, 14);
+  gen('food-gale-plum', 22, 22);
+  // pluto — Frost Berry: a cluster of three pale-ice berries
+  g.fillStyle(0xbfe8ff);
+  g.fillCircle(7, 14, 5);
+  g.fillCircle(15, 14, 5);
+  g.fillCircle(11, 8, 5);
+  g.fillStyle(0xffffff, 0.8);
+  g.fillCircle(6, 12, 1.6);
+  g.fillCircle(14, 12, 1.6);
+  g.fillCircle(10, 6, 1.6);
+  gen('food-frost-berry', 22, 22);
 
   // melee slash
   g.fillStyle(0xffffff, 0.85);

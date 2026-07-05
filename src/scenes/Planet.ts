@@ -33,6 +33,7 @@ export class PlanetScene extends Phaser.Scene {
   private arenaX = 0;
   private rocketHint!: Phaser.GameObjects.Text;
   private pickupsSinceFlush = 0;
+  private treasureComplete = false;
   private debris!: Phaser.Physics.Arcade.Group;
   private bossRocks!: Phaser.Physics.Arcade.Group;
   private contactSafeUntil = new WeakMap<Phaser.GameObjects.GameObject, number>();
@@ -53,6 +54,10 @@ export class PlanetScene extends Phaser.Scene {
     const def = this.def;
     const accent = hexToInt(def.palette.accent);
     this.accentColor = accent;
+    // Don't re-play the "all collected!" celebration if this planet was already
+    // cleared on a previous visit.
+    this.treasureComplete =
+      (state.planet(this.planetId).treasureFound ?? 0) >= def.collectibles.treasure.count;
     const groundCol = hexToInt(def.palette.ground);
     const cols = def.terrain.width;
     const W = cols * TILE;
@@ -137,7 +142,12 @@ export class PlanetScene extends Phaser.Scene {
       }
     };
     scatter('gem', accent, def.collectibles.treasure.id, 'treasure', def.collectibles.treasure.count);
-    scatter('food', null, def.collectibles.food.id, 'food', def.collectibles.food.count);
+    // Each planet's fruit has its own shape (texture 'food-<id>'); fall back to
+    // the generic snack sprite for any food without a bespoke drawing yet.
+    const foodTex = this.textures.exists(`food-${def.collectibles.food.id}`)
+      ? `food-${def.collectibles.food.id}`
+      : 'food';
+    scatter(foodTex, null, def.collectibles.food.id, 'food', def.collectibles.food.count);
 
     // --- monsters (seeded spawn, lively movement) ---
     this.monsters = this.physics.add.group();
@@ -366,12 +376,24 @@ export class PlanetScene extends Phaser.Scene {
 
   private collect(itemId: string, kind: string, x: number, y: number): void {
     state.addItem(itemId);
+    audio.sfx('pickup');
     if (kind === 'treasure') {
       const p = state.planet(this.planetId);
+      const goal = this.def.collectibles.treasure.count;
       p.treasureFound = (p.treasureFound ?? 0) + 1;
+      const found = Math.min(p.treasureFound, goal);
+      // Show progress toward the level's goal on every pickup, then a big
+      // "you got them all!" moment when the set is complete.
+      this.floaty(x, y - 10, `${found}/${goal}`, '#ffe08a');
+      if (found >= goal && !this.treasureComplete) {
+        this.treasureComplete = true;
+        this.game.events.emit('ss-celebrate', { variant: 'sparkles', tone: 'success' });
+        this.banner(`ALL ${goal} ${this.def.collectibles.treasure.name.toUpperCase()}!`, this.accentColor);
+        state.flush();
+      }
+    } else {
+      this.floaty(x, y - 10, '+1', '#8aff9e');
     }
-    audio.sfx('pickup');
-    this.floaty(x, y - 10, '+1', '#ffe08a');
     if (++this.pickupsSinceFlush >= 5) {
       this.pickupsSinceFlush = 0;
       state.flush();
