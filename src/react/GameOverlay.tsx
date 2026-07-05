@@ -6,6 +6,7 @@ import {
   HealthBar,
   Splash,
   GlobalAnimation,
+  Kbd,
   type GlobalAnimationVariant,
   type GlobalAnimationTone,
 } from 'puxel';
@@ -83,6 +84,59 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
             {/* cells=max so each pip is exactly one heart (the default cells=10
                 is meant for percentage-style HP pools, not our small 3-10 count) */}
             <HealthBar kind="hp" value={hearts.current} max={hearts.max} cells={hearts.max} label="HP" />
+          </div>
+        )}
+        {scene === 'planet' && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 12,
+              bottom: 10,
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '3px 12px',
+              color: '#9fb0d8',
+              fontSize: 12,
+              opacity: 0.85,
+              pointerEvents: 'none',
+            }}
+          >
+            <span>
+              <Kbd>←</Kbd>
+              <Kbd>→</Kbd> / <Kbd>A</Kbd>
+              <Kbd>D</Kbd> move
+            </span>
+            <span aria-hidden style={{ opacity: 0.5 }}>
+              ·
+            </span>
+            <span>
+              <Kbd>Space</Kbd> jump
+            </span>
+            <span aria-hidden style={{ opacity: 0.5 }}>
+              ·
+            </span>
+            <span>
+              <Kbd>X</Kbd> attack
+            </span>
+            <span aria-hidden style={{ opacity: 0.5 }}>
+              ·
+            </span>
+            <span>
+              <Kbd>E</Kbd> use
+            </span>
+            <span aria-hidden style={{ opacity: 0.5 }}>
+              ·
+            </span>
+            <span>
+              <Kbd>F</Kbd> eat
+            </span>
+            <span aria-hidden style={{ opacity: 0.5 }}>
+              ·
+            </span>
+            <span>
+              <Kbd>I</Kbd> bag
+            </span>
           </div>
         )}
         {celebration && (

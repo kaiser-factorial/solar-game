@@ -27,10 +27,7 @@ export class HUDScene extends Phaser.Scene {
     this.game.events.on('ss-boss', this.onBoss, this);
     this.input.keyboard!.on('keydown-I', () => this.togglePanel());
 
-    txt(this, 12, 528, '←→/AD move  ·  ␣ jump  ·  X attack  ·  E use  ·  F eat  ·  I bag', 13, '#9fb0d8')
-      .setOrigin(0, 0.5)
-      .setAlpha(0.75)
-      .setDepth(100);
+    // The control hint is the React <Kbd> overlay now (src/react/GameOverlay.tsx).
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsub?.();
