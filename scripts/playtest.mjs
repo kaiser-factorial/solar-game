@@ -61,6 +61,20 @@ try {
   await sleep(400);
   await shot('06-moon-explore');
 
+  // stomp test: drop the player onto a monster from above — it should take damage
+  const stomp = await page.evaluate(async () => {
+    const p = window.__game.scene.getScene('Planet');
+    const m = p.monsters.getChildren().find((x) => x.active);
+    if (!m) return 'no-monster';
+    const before = p.monsters.countActive();
+    const hpBefore = m.hp;
+    p.player.setPosition(m.x, m.y - 80);
+    p.player.setVelocity(0, 250);
+    await new Promise((r) => setTimeout(r, 1500));
+    return { before, after: p.monsters.countActive(), hpBefore, hpAfter: m.active ? m.hp : 'dead' };
+  });
+  console.log('STOMP-TEST', JSON.stringify(stomp));
+
   // teleport to the boss arena to test the fight
   await page.evaluate(() => {
     const g = window.__game;

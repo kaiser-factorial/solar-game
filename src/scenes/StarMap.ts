@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { state } from '../systems/save';
 import { ORB_COLORS } from '../content';
 import { txt, makeButton, sprinkleStars, toast } from '../systems/ui';
+import { audio } from '../systems/audio';
 
 interface BodySpec {
   id: string;
@@ -28,6 +29,13 @@ const CX = 480;
 const CY = 300;
 const SQUASH = 0.55;
 
+/** Blend a planet color most of the way toward slate grey for locked worlds. */
+function greyed(color: number): number {
+  const c = Phaser.Display.Color.IntegerToColor(color);
+  const mix = (v: number, g: number) => Math.floor(v * 0.3 + g * 0.7);
+  return Phaser.Display.Color.GetColor(mix(c.red, 0x4a), mix(c.green, 0x4f), mix(c.blue, 0x5c));
+}
+
 export class StarMapScene extends Phaser.Scene {
   private angles: Record<string, number> = {};
   private moonAngle = 0;
@@ -35,6 +43,7 @@ export class StarMapScene extends Phaser.Scene {
   private moonNode!: Phaser.GameObjects.Container;
   private fx!: Phaser.GameObjects.Graphics;
   private positions: Record<string, { x: number; y: number }> = {};
+  private hovered: string | null = null;
 
   constructor() {
     super('StarMap');
@@ -42,6 +51,8 @@ export class StarMapScene extends Phaser.Scene {
 
   create(): void {
     this.scene.stop('HUD'); // safety net — the HUD belongs to planets only
+    this.hovered = null;
+    this.positions = {};
     sprinkleStars(this, 110);
 
     // orbits
@@ -58,11 +69,17 @@ export class StarMapScene extends Phaser.Scene {
 
     BODIES.forEach((b, i) => {
       this.angles[b.id] = i * 2.4;
+      const locked = !this.landable(b.id);
       const node = this.add.container(0, 0).setDepth(3);
-      const dot = this.add.circle(0, 0, b.size, b.color);
-      const label = txt(this, 0, b.size + 14, b.name, 13, '#9fb0d8');
+      const dot = this.add.circle(0, 0, b.size, locked ? greyed(b.color) : b.color);
+      if (locked) dot.setAlpha(0.8);
+      const label = txt(this, 0, b.size + 14, b.name, 13, locked ? '#575d6e' : '#9fb0d8');
       node.add([dot, label]);
-      if (b.id === 'saturn') node.add(this.add.ellipse(0, 0, b.size * 3.2, b.size, 0xd8c07a, 0.35));
+      if (b.id === 'saturn') {
+        node.add(
+          this.add.ellipse(0, 0, b.size * 3.2, b.size, locked ? greyed(0xd8c07a) : 0xd8c07a, 0.35)
+        );
+      }
       this.nodes[b.id] = node;
     });
 
@@ -72,7 +89,7 @@ export class StarMapScene extends Phaser.Scene {
     this.moonNode.add(txt(this, 0, 15, 'Moon', 12, '#eaf2ff'));
 
     // UI chrome
-    txt(this, 16, 20, 'SOLAR SCOUTS', 20, '#ffe08a').setOrigin(0, 0.5);
+    txt(this, 16, 20, 'MOON SHARD', 20, '#ffe08a').setOrigin(0, 0.5);
     txt(
       this,
       16,
@@ -86,7 +103,14 @@ export class StarMapScene extends Phaser.Scene {
     txt(this, 480, 520, 'Click a glowing world to land!', 16, '#9fb0d8');
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.handleClick(p));
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.handleHover(p));
+    this.input.keyboard!.on('keydown-M', () => {
+      toast(this, audio.toggle() ? 'Sound ON' : 'Sound OFF');
+    });
     this.events.on(Phaser.Scenes.Events.WAKE, () => this.drawStatusRow());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.setDefaultCursor('default'));
+
+    audio.music('map');
   }
 
   private statusRow?: Phaser.GameObjects.Container;
@@ -104,36 +128,82 @@ export class StarMapScene extends Phaser.Scene {
     this.statusRow = c;
   }
 
-  private unlocked(id: string): boolean {
+  private landable(id: string): boolean {
     if (id === 'moon') return true;
     if (id === 'mars') return !!state.save.planets['moon']?.bossDefeated;
     return false;
   }
 
-  private handleClick(p: Phaser.Input.Pointer): void {
-    if (this.scene.isActive('Settings')) return;
+  private nodeFor(id: string): Phaser.GameObjects.Container | undefined {
+    return id === 'moon' ? this.moonNode : this.nodes[id];
+  }
+
+  private hitTest(x: number, y: number): string | null {
     let hit: string | null = null;
     let best = 26;
     for (const [id, pos] of Object.entries(this.positions)) {
-      const d = Phaser.Math.Distance.Between(p.x, p.y, pos.x, pos.y);
+      const d = Phaser.Math.Distance.Between(x, y, pos.x, pos.y);
       if (d < best) {
         best = d;
         hit = id;
       }
     }
+    return hit;
+  }
+
+  private handleHover(p: Phaser.Input.Pointer): void {
+    if (this.scene.isActive('Settings')) return;
+    const hit = this.hitTest(p.x, p.y);
+    if (hit === this.hovered) return;
+
+    // shrink the old friend back down
+    if (this.hovered) {
+      const prev = this.nodeFor(this.hovered);
+      if (prev) this.tweens.add({ targets: prev, scale: 1, duration: 150, ease: 'Sine.out' });
+    }
+    this.hovered = hit;
+    if (!hit) {
+      this.input.setDefaultCursor('default');
+      return;
+    }
+
+    // the planet says hello…
+    const node = this.nodeFor(hit);
+    if (node) {
+      this.tweens.add({ targets: node, scale: 1.35, duration: 180, ease: 'Back.out' });
+    }
+    this.input.setDefaultCursor(this.landable(hit) ? 'pointer' : 'not-allowed');
+
+    // …and the cursor waves back (little ring pulse at the pointer)
+    const ring = this.add
+      .circle(p.x, p.y, 6)
+      .setStrokeStyle(2, this.landable(hit) ? 0x7fd4ff : 0x666a7a)
+      .setDepth(50);
+    this.tweens.add({
+      targets: ring,
+      scale: 3,
+      alpha: 0,
+      duration: 350,
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  private handleClick(p: Phaser.Input.Pointer): void {
+    if (this.scene.isActive('Settings')) return;
+    const hit = this.hitTest(p.x, p.y);
     if (!hit) return;
-    if (hit === 'moon' || (hit === 'mars' && this.unlocked('mars'))) {
+    if (this.landable(hit)) {
+      audio.sfx('click');
       state.save.currentPlanet = hit;
       state.touch();
+      this.input.setDefaultCursor('default');
       this.scene.start('Planet', { planetId: hit });
-    } else if (hit === 'mars') {
-      toast(this, 'Mars is locked — beat the Moon boss first!');
-    } else if (hit === 'earth') {
-      toast(this, 'Earth — coming soon!');
-    } else {
-      const name = BODIES.find((b) => b.id === hit)?.name ?? hit;
-      toast(this, `${name} — coming soon!`);
+      return;
     }
+    audio.sfx('denied');
+    if (hit === 'mars') toast(this, 'Mars is locked — beat the Moon boss first!');
+    else if (hit === 'earth') toast(this, 'Earth — coming soon!');
+    else toast(this, `${BODIES.find((b) => b.id === hit)?.name ?? hit} — coming soon!`);
   }
 
   update(_time: number, delta: number): void {
@@ -156,7 +226,7 @@ export class StarMapScene extends Phaser.Scene {
     this.moonNode.setPosition(mx, my);
     this.positions['moon'] = { x: mx, y: my };
 
-    // glow rings on landable worlds, orb badge on beaten ones
+    // glow rings on landable worlds, shard badge on beaten ones
     const pulse = 0.35 + 0.25 * Math.sin(_time / 300);
     for (const id of ['moon', 'mars']) {
       const pos = this.positions[id];
@@ -165,9 +235,9 @@ export class StarMapScene extends Phaser.Scene {
         this.fx.fillStyle(ORB_COLORS[id], 0.9);
         this.fx.fillCircle(pos.x + 10, pos.y - 10, 4);
       }
-      if (this.unlocked(id)) {
-        this.fx.lineStyle(2, 0x7fd4ff, pulse);
-        this.fx.strokeCircle(pos.x, pos.y, 14);
+      if (this.landable(id)) {
+        this.fx.lineStyle(2, 0x7fd4ff, this.hovered === id ? 0.9 : pulse);
+        this.fx.strokeCircle(pos.x, pos.y, this.hovered === id ? 17 : 14);
       } else {
         this.fx.lineStyle(2, 0x666a7a, 0.5);
         this.fx.strokeCircle(pos.x, pos.y, 12);

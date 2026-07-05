@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { state } from '../systems/save';
 import { signOutUser } from '../lib/supabase';
 import { txt, makeButton } from '../systems/ui';
+import { audio } from '../systems/audio';
 
 const SCHEMES = [
   { id: 'keyboard', label: 'Keyboard (arrows / WASD)', ready: true },
@@ -35,16 +36,25 @@ export class SettingsScene extends Phaser.Scene {
     txt(
       this,
       480,
-      330,
+      322,
       'Camera controls run only on your computer —\nno video is ever recorded or sent anywhere.',
       13,
       '#666a7a'
     );
 
+    const soundBtn = makeButton(
+      this,
+      480,
+      362,
+      `Sound: ${audio.enabled ? 'ON 🔊' : 'OFF 🔇'}`,
+      () => soundBtn.setText(`Sound: ${audio.toggle() ? 'ON 🔊' : 'OFF 🔇'}`),
+      15
+    );
+
     txt(
       this,
       480,
-      380,
+      395,
       state.authed
         ? `Playing as ${state.playerName} — progress saved online ✓`
         : `Playing as guest — progress saved on this computer`,

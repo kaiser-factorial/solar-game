@@ -41,8 +41,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Returns true when the monster dies. */
-  hit(fromX: number): boolean {
-    this.hp -= 1;
+  hit(fromX: number, damage = 1): boolean {
+    this.hp -= damage;
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(this.x < fromX ? -180 : 180, -160);
     this.scene.tweens.add({ targets: this, alpha: 0.3, yoyo: true, duration: 60, repeat: 2 });

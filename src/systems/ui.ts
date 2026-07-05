@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audio } from './audio';
 
 export const FONT = '"Courier New", monospace';
 
@@ -27,7 +28,10 @@ export function makeButton(
     .setPadding(14, 8, 14, 8)
     .setStyle({ backgroundColor: '#1c3f7a' });
   t.setInteractive({ useHandCursor: true })
-    .on('pointerdown', cb)
+    .on('pointerdown', () => {
+      audio.sfx('click');
+      cb();
+    })
     .on('pointerover', () => t.setStyle({ backgroundColor: '#2a58a8' }))
     .on('pointerout', () => t.setStyle({ backgroundColor: '#1c3f7a' }));
   return t;

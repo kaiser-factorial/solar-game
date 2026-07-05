@@ -1,11 +1,11 @@
-# Solar Scouts — Game Plan & Architecture
+# Moon Shard — Game Plan & Architecture
 
 **Status:** Proposed
 **Date:** 2026-07-04
 **Author:** Corina + nephews (game design), Claude (architecture)
 **Audience:** This document is written so a coding agent can pick it up and build the MVP, then continue through the later phases without further design input.
 
-*(Working title — the nephews get final naming rights.)*
+*(Named "Moon Shard" by the nephews on day one — formerly working title "Solar Scouts". The per-planet orbs are called **shards** in-game.)*
 
 ---
 

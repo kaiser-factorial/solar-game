@@ -10,7 +10,7 @@ export class SignInScene extends Phaser.Scene {
 
   create(): void {
     sprinkleStars(this);
-    txt(this, 480, 90, 'SOLAR SCOUTS', 52, '#ffe08a');
+    txt(this, 480, 90, 'MOON SHARD', 52, '#ffe08a');
     txt(this, 480, 140, "Who's playing?", 24);
 
     const online = configured();

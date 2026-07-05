@@ -10,6 +10,7 @@ import { Player } from '../entities/Player';
 import { Monster } from '../entities/Monster';
 import { Boss } from '../entities/Boss';
 import { txt, sprinkleStars, toast } from '../systems/ui';
+import { audio, type TrackName } from '../systems/audio';
 
 const TILE = BALANCE.tile;
 const H = BALANCE.worldHeight;
@@ -143,6 +144,18 @@ export class PlanetScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.player, this.monsters, (_p, m) => {
       const mon = m as Monster;
+      const body = this.player.body as Phaser.Physics.Arcade.Body;
+      // Falling onto a lil guy from above = a Mario-style stomp.
+      if (body.velocity.y > 40 && this.player.y + 12 < mon.y) {
+        body.setVelocityY(-BALANCE.stompBounce);
+        audio.sfx('stomp');
+        this.floaty(mon.x, mon.y - 20, 'SQUISH!', '#ffe08a');
+        if (mon.hit(this.player.x, BALANCE.stompDamage)) {
+          this.poof(mon.x, mon.y, accent);
+          mon.destroy();
+        }
+        return;
+      }
       this.hurtPlayer(mon.def.damage, mon.x);
     });
     this.physics.add.overlap(this.slashes, this.monsters, (s, m) => {
@@ -174,8 +187,16 @@ export class PlanetScene extends Phaser.Scene {
     // --- extra keys (UI-level, not gameplay movement) ---
     this.input.keyboard!.on('keydown-F', () => {
       const ate = state.eatFood(FOOD_HEALS);
-      if (ate) this.floaty(this.player.x, this.player.y - 40, '+1 ♥ yum!', '#8aff9e');
-      else toast(this, state.save.hearts.current >= state.save.hearts.max ? 'Hearts already full!' : 'No food in your bag yet!');
+      if (ate) {
+        audio.sfx('eat');
+        this.floaty(this.player.x, this.player.y - 40, '+1 ♥ yum!', '#8aff9e');
+      } else {
+        audio.sfx('denied');
+        toast(this, state.save.hearts.current >= state.save.hearts.max ? 'Hearts already full!' : 'No food in your bag yet!');
+      }
+    });
+    this.input.keyboard!.on('keydown-M', () => {
+      toast(this, audio.toggle() ? 'Sound ON' : 'Sound OFF');
     });
 
     this.rocketHint = txt(this, this.rocketX, groundTop(3) - 80, 'E — fly home', 14, '#ffe08a')
@@ -184,6 +205,7 @@ export class PlanetScene extends Phaser.Scene {
 
     this.scene.launch('HUD', { planetId: this.planetId });
     this.banner(def.name.toUpperCase(), hexToInt(def.palette.accent));
+    audio.music(this.planetId as TrackName);
     state.flush();
   }
 
@@ -193,6 +215,7 @@ export class PlanetScene extends Phaser.Scene {
       const p = state.planet(this.planetId);
       p.treasureFound = (p.treasureFound ?? 0) + 1;
     }
+    audio.sfx('pickup');
     this.floaty(x, y - 10, '+1', '#ffe08a');
     if (++this.pickupsSinceFlush >= 5) {
       this.pickupsSinceFlush = 0;
@@ -202,7 +225,9 @@ export class PlanetScene extends Phaser.Scene {
 
   private hurtPlayer(damage: number, fromX: number): void {
     const result = this.player.hurt(damage, fromX, this.time.now);
+    if (result === 'hit') audio.sfx('hurt');
     if (result === 'dead') {
+      audio.sfx('die');
       this.cameras.main.flash(300, 255, 60, 60);
       this.banner('OUCH! back to the rocket...', 0xff6666);
       this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
@@ -231,7 +256,8 @@ export class PlanetScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, orb, () => {
       orb.destroy();
       state.addOrb(this.planetId);
-      this.banner(`${this.def.name.toUpperCase()} ORB GET!  +1 ♥`, ORB_COLORS[this.planetId]);
+      audio.sfx('orb');
+      this.banner(`${this.def.name.toUpperCase()} SHARD GET!  +1 ♥`, ORB_COLORS[this.planetId]);
       toast(this, 'Press E at your rocket to fly home!');
     });
   }
@@ -269,12 +295,15 @@ export class PlanetScene extends Phaser.Scene {
 
     // attack swing
     if (this.player.applyIntent(intent, time)) {
+      audio.sfx('attack');
       const slash = this.slashes.create(
         this.player.x + this.player.facing * 34,
-        this.player.y + 2,
+        this.player.y + 8,
         'slash'
       ) as Phaser.Physics.Arcade.Image;
       slash.setFlipX(this.player.facing < 0).setDepth(6);
+      // Reach low enough to catch short monsters at the player's feet.
+      (slash.body as Phaser.Physics.Arcade.Body).setSize(46, 46);
       slash.setData('hits', new Set());
       this.time.delayedCall(BALANCE.attackDurationMs, () => slash.destroy());
     }
@@ -299,6 +328,7 @@ export class PlanetScene extends Phaser.Scene {
     if (this.boss) {
       if (!this.boss.awake && this.player.x > this.arenaX) {
         this.boss.wake(time);
+        audio.sfx('boss');
         this.game.events.emit('ss-boss', { name: this.def.boss.name, hp: this.boss.hp, max: this.boss.maxHp });
         this.banner(`${this.def.boss.name}!!`, 0xff6666);
       }

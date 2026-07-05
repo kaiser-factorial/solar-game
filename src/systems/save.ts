@@ -14,7 +14,7 @@ export interface PlanetProgress {
 
 export interface SaveData {
   version: 1;
-  settings: { controls: 'keyboard' | 'mouse' | 'face' | 'hand' };
+  settings: { controls: 'keyboard' | 'mouse' | 'face' | 'hand'; sound?: 'on' | 'off' };
   hearts: { max: number; current: number };
   orbs: string[];
   currentPlanet: string;
@@ -25,7 +25,7 @@ export interface SaveData {
 export function defaultSave(): SaveData {
   return {
     version: 1,
-    settings: { controls: 'keyboard' },
+    settings: { controls: 'keyboard', sound: 'on' },
     hearts: { max: BALANCE.startHearts, current: BALANCE.startHearts },
     orbs: [],
     currentPlanet: '',

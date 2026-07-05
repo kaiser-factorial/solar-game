@@ -7,6 +7,8 @@ export const BALANCE = {
   attackReach: 40,
   iframesMs: 1000,
   knockback: 260,
+  stompDamage: 2, // squish the lil guys in one hop
+  stompBounce: 380,
   startHearts: 3,
   maxHeartsCap: 10,
   monsterAggroRange: 300,

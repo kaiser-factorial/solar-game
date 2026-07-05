@@ -15,9 +15,10 @@ export const configured = () => supabase !== null;
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) || 'scout';
 }
-// example.com is RFC-reserved: real DNS (passes Supabase validation), never
-// receives mail. Fine here because "Confirm email" is disabled for this project.
-const emailFor = (name: string) => `scout-${slugify(name)}@example.com`;
+// test.example.com is RFC-reserved (never deliverable) and — unlike bare
+// example.com — passes this project's email validation. Fine here because
+// "Confirm email" is disabled for this project, so nothing is ever sent.
+const emailFor = (name: string) => `scout-${slugify(name)}@test.example.com`;
 const passFor = (pin: string) => `pin:${pin}:scouts`;
 
 async function pushNow(): Promise<void> {

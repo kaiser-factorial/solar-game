@@ -3,11 +3,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  'https://ennsyajamfuslvbkunns.supabase.co',
-  'sb_publishable_NqdxkwshFOmdYQRrGDK8mA_1FMGseAu'
+  'https://wfrxfhpiuxofmfdjpuvv.supabase.co',
+  'sb_publishable_LgrswfOZ6Ujk9k9UzVir7Q_ZmEnX0LO'
 );
 
-const email = 'scout-testkid@example.com';
+const email = 'scout-testkid@test.example.com';
 const password = 'pin:1234:scouts';
 
 const su = await supabase.auth.signUp({ email, password });

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BALANCE } from '../systems/balance';
 import { state } from '../systems/save';
 import type { InputIntent } from '../input/types';
+import { audio } from '../systems/audio';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   facing = 1;
@@ -32,6 +33,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       body.setVelocityY(
         -Math.sqrt(2 * this.scene.physics.world.gravity.y * BALANCE.jumpHeight)
       );
+      audio.sfx('jump');
     }
     if (intent.attack && time >= this.nextAttackAt) {
       this.nextAttackAt = time + BALANCE.attackCooldownMs;
