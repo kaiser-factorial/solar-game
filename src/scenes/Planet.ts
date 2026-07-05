@@ -5,7 +5,7 @@ import { state } from '../systems/save';
 import { PLANETS, ORB_COLORS, FOOD_HEALS, hexToInt, type PlanetDef } from '../content';
 import { ensurePlayerTexture } from '../systems/textures';
 import { createControls } from '../input/manager';
-import type { ControlScheme } from '../input/types';
+import type { ControlScheme, InputIntent } from '../input/types';
 import { Player } from '../entities/Player';
 import { Monster } from '../entities/Monster';
 import { Boss } from '../entities/Boss';
@@ -30,6 +30,9 @@ export class PlanetScene extends Phaser.Scene {
   private arenaX = 0;
   private rocketHint!: Phaser.GameObjects.Text;
   private pickupsSinceFlush = 0;
+  private contactSafeUntil = new WeakMap<Phaser.GameObjects.GameObject, number>();
+  private swordHitSafeUntil = new WeakMap<Phaser.GameObjects.GameObject, number>();
+  private accentColor = 0xffffff;
 
   constructor() {
     super('Planet');
@@ -43,6 +46,7 @@ export class PlanetScene extends Phaser.Scene {
     this.def = PLANETS[this.planetId];
     const def = this.def;
     const accent = hexToInt(def.palette.accent);
+    this.accentColor = accent;
     const groundCol = hexToInt(def.palette.ground);
     const cols = def.terrain.width;
     const W = cols * TILE;
@@ -151,28 +155,26 @@ export class PlanetScene extends Phaser.Scene {
         (this.player.body as Phaser.Physics.Arcade.Body).setVelocityY(-BALANCE.stompBounce);
         audio.sfx('stomp');
         this.floaty(mon.x, mon.y - 20, 'SQUISH!', '#ffe08a');
+        this.protectPlayerFrom(mon);
         if (mon.hit(this.player.x, BALANCE.stompDamage)) {
           this.poof(mon.x, mon.y, accent);
           mon.destroy();
         }
         return;
       }
+      if (this.isPlayerProtectedFrom(mon)) return;
       this.hurtPlayer(mon.def.damage, mon.x);
     });
     this.physics.add.overlap(this.slashes, this.monsters, (s, m) => {
       const slash = this.arcadeObject<Phaser.Physics.Arcade.Image>(s);
       const mon = this.arcadeObject<Monster>(m);
-      const hits = this.slashHits<Monster>(slash);
-      if (hits.has(mon)) return;
-      hits.add(mon);
-      if (mon.hit(this.player.x)) {
-        this.poof(mon.x, mon.y, accent);
-        mon.destroy();
-      }
+      this.hitMonsterWithSlash(slash, mon);
     });
     if (this.boss) {
       this.physics.add.overlap(this.player, this.boss, () => {
-        if (this.boss?.awake) this.hurtPlayer(def.boss.damage, this.boss.x);
+        if (this.boss?.awake && !this.isPlayerProtectedFrom(this.boss)) {
+          this.hurtPlayer(def.boss.damage, this.boss.x);
+        }
       });
       this.physics.add.overlap(this.slashes, this.boss, (s, b) => {
         const slash = this.arcadeObject<Phaser.Physics.Arcade.Image>(s);
@@ -180,12 +182,7 @@ export class PlanetScene extends Phaser.Scene {
         const boss = this.boss;
         if (!boss) return;
         if (!boss.active) return;
-        const hits = this.slashHits<Boss>(slash);
-        if (hits.has(boss)) return;
-        hits.add(boss);
-        const defeated = boss.hit(this.player.x);
-        this.game.events.emit('ss-boss', { name: def.boss.name, hp: Math.max(0, boss.hp), max: boss.maxHp });
-        if (defeated) this.bossDefeated();
+        this.hitBossWithSlash(slash, boss);
       });
     }
 
@@ -241,6 +238,20 @@ export class PlanetScene extends Phaser.Scene {
     }
   }
 
+  private protectPlayerFrom(enemy: Phaser.GameObjects.GameObject): void {
+    this.contactSafeUntil.set(enemy, this.time.now + BALANCE.enemyHitContactCooldownMs);
+  }
+
+  private isPlayerProtectedFrom(enemy: Phaser.GameObjects.GameObject): boolean {
+    return this.time.now < (this.contactSafeUntil.get(enemy) ?? 0);
+  }
+
+  private canTakeSwordHit(enemy: Phaser.GameObjects.GameObject): boolean {
+    if (this.time.now < (this.swordHitSafeUntil.get(enemy) ?? 0)) return false;
+    this.swordHitSafeUntil.set(enemy, this.time.now + BALANCE.attackDurationMs);
+    return true;
+  }
+
   private isStomping(mon: Monster): boolean {
     const playerBody = this.player.body as Phaser.Physics.Arcade.Body | null;
     const monsterBody = mon.body as Phaser.Physics.Arcade.Body | null;
@@ -258,12 +269,92 @@ export class PlanetScene extends Phaser.Scene {
   }
 
   private slashHits<T extends Phaser.GameObjects.GameObject>(slash: Phaser.Physics.Arcade.Image): Set<T> {
-    let hits = slash.getData('hits') as Set<T> | undefined;
+    const slashWithHits = slash as Phaser.Physics.Arcade.Image & { __hits?: Set<Phaser.GameObjects.GameObject> };
+    let hits = slashWithHits.__hits as Set<T> | undefined;
     if (!hits) {
       hits = new Set<T>();
-      slash.setData('hits', hits);
+      slashWithHits.__hits = hits as Set<Phaser.GameObjects.GameObject>;
     }
     return hits;
+  }
+
+  private hitMonsterWithSlash(slash: Phaser.Physics.Arcade.Image, mon: Monster): void {
+    const hits = this.slashHits<Monster>(slash);
+    if (hits.has(mon) || !mon.active) return;
+    hits.add(mon);
+    if (!this.canTakeSwordHit(mon)) return;
+    this.protectPlayerFrom(mon);
+    if (mon.hit(this.player.x)) {
+      this.poof(mon.x, mon.y, this.accentColor);
+      mon.destroy();
+    }
+  }
+
+  private hitBossWithSlash(slash: Phaser.Physics.Arcade.Image, boss: Boss): void {
+    const hits = this.slashHits<Boss>(slash);
+    if (hits.has(boss) || !boss.active) return;
+    hits.add(boss);
+    if (!this.canTakeSwordHit(boss)) return;
+    this.protectPlayerFrom(boss);
+    const defeated = boss.hit(this.player.x);
+    this.game.events.emit('ss-boss', { name: this.def.boss.name, hp: Math.max(0, boss.hp), max: boss.maxHp });
+    if (defeated) this.bossDefeated();
+  }
+
+  private slashOverlaps(slash: Phaser.Physics.Arcade.Image, target: Phaser.GameObjects.GameObject): boolean {
+    const a = slash.body as Phaser.Physics.Arcade.Body | null;
+    const b = (target.body as Phaser.Physics.Arcade.Body | null) ?? null;
+    if (!a || !b) return false;
+    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  }
+
+  private scanSlashHits(slash: Phaser.Physics.Arcade.Image): void {
+    this.monsters.children.iterate((m) => {
+      const mon = m as Monster;
+      if (mon.active && this.slashOverlaps(slash, mon)) this.hitMonsterWithSlash(slash, mon);
+      return true;
+    });
+    if (this.boss && this.slashOverlaps(slash, this.boss)) {
+      this.hitBossWithSlash(slash, this.boss);
+    }
+  }
+
+  private attackDirection(intent: InputIntent): { x: number; y: number } {
+    if (intent.aimY !== 0) return { x: 0, y: intent.aimY };
+    if (intent.aimX !== 0) return { x: intent.aimX, y: 0 };
+    return { x: this.player.facing, y: 0 };
+  }
+
+  private createSlash(intent: InputIntent): void {
+    const dir = this.attackDirection(intent);
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    let x = body.center.x;
+    let y = body.center.y;
+    if (dir.x !== 0) {
+      x = body.center.x + dir.x * BALANCE.attackReach;
+      y = body.center.y;
+    } else if (dir.y > 0) {
+      y = body.bottom + BALANCE.attackReach / 2;
+    } else if (dir.y < 0) {
+      y = body.top - BALANCE.attackReach / 2;
+    }
+    const slash = this.slashes.create(
+      x,
+      y,
+      'slash'
+    ) as Phaser.Physics.Arcade.Image;
+    (slash as Phaser.Physics.Arcade.Image & { __hits: Set<Phaser.GameObjects.GameObject> }).__hits = new Set();
+    slash.setDepth(6);
+    slash.setFlipX(dir.x < 0);
+    slash.setAngle(dir.y !== 0 ? 90 : 0);
+    if (dir.y < 0) slash.setFlipX(false).setFlipY(true);
+    // Keep the gameplay hitbox generous for kid-friendly timing in every aim direction.
+    (slash.body as Phaser.Physics.Arcade.Body).setSize(46, 46);
+    this.scanSlashHits(slash);
+    this.time.delayedCall(30, () => {
+      if (slash.active) this.scanSlashHits(slash);
+    });
+    this.time.delayedCall(BALANCE.attackDurationMs, () => slash.destroy());
   }
 
   private bossDefeated(): void {
@@ -329,16 +420,7 @@ export class PlanetScene extends Phaser.Scene {
     // attack swing
     if (this.player.applyIntent(intent, time)) {
       audio.sfx('attack');
-      const slash = this.slashes.create(
-        this.player.x + this.player.facing * 34,
-        this.player.y + 8,
-        'slash'
-      ) as Phaser.Physics.Arcade.Image;
-      slash.setFlipX(this.player.facing < 0).setDepth(6);
-      slash.setData('hits', new Set());
-      // Reach low enough to catch short monsters at the player's feet.
-      (slash.body as Phaser.Physics.Arcade.Body).setSize(46, 46);
-      this.time.delayedCall(BALANCE.attackDurationMs, () => slash.destroy());
+      this.createSlash(intent);
     }
 
     // fly home

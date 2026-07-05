@@ -11,6 +11,7 @@ export const BALANCE = {
   stompBounce: 380,
   stompMinFallSpeed: 20,
   stompTopTolerance: 22,
+  enemyHitContactCooldownMs: 2000,
   startHearts: 3,
   maxHeartsCap: 10,
   monsterAggroRange: 300,

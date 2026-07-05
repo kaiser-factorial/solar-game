@@ -5,6 +5,8 @@
  */
 export interface InputIntent {
   moveX: number; // -1..1
+  aimX: number; // -1..1, for attack direction
+  aimY: number; // -1..1, for attack direction
   jump: boolean;
   attack: boolean;
   interact: boolean;

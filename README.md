@@ -11,7 +11,8 @@ Full design + roadmap: [PLAN.md](PLAN.md)
 
 ## Play
 
-- **Move** — arrows or WASD · **Jump** — space (stomp lil monsters!) · **Attack** — X or J
+- **Move/Aim** — arrows or WASD · **Jump** — space (stomp lil monsters!) · **Attack** — X or J
+  while holding a direction
 - **E** — use (fly home at your rocket) · **F** — eat food · **I** — bag · **M** — sound on/off
 - Beat a planet's boss → earn its shard **+1 heart**, and unlock the next world.
 - Sign in with just a **name + 4-digit PIN** to keep progress across computers,

@@ -130,6 +130,41 @@ try {
     throw new Error(`Boss first-swing regression: ${JSON.stringify(firstBossSwingResult)}`);
   }
 
+  const bossDownSwing = await page.evaluate(async () => {
+    const p = window.__game.scene.getScene('Planet');
+    const boss = p.boss;
+    if (!boss) return 'no-boss';
+    p.player.body.reset(boss.x, boss.y - 78);
+    p.player.setVelocity(0, 180);
+    boss.body.reset(boss.x, boss.y);
+    boss.setVelocity(0, 0);
+    const before = boss.hp;
+    const hurtBefore = p.player.invulnUntil ?? 0;
+    await new Promise((r) => setTimeout(r, 80));
+    return { before, after: boss.hp, active: boss.active, hurtBefore, hurtAfter: p.player.invulnUntil ?? 0 };
+  });
+  await page.keyboard.down('ArrowDown');
+  await page.keyboard.down('KeyX');
+  await sleep(80);
+  await page.keyboard.up('KeyX');
+  await sleep(650);
+  await page.keyboard.up('ArrowDown');
+  const bossDownSwingResult = await page.evaluate((beforeResult) => {
+    const p = window.__game.scene.getScene('Planet');
+    const boss = p.boss;
+    if (!boss || beforeResult === 'no-boss') return beforeResult;
+    return { ...beforeResult, after: boss.hp, active: boss.active, hurtAfter: p.player.invulnUntil ?? 0 };
+  }, bossDownSwing);
+  console.log('BOSS-DOWN-SWING', JSON.stringify(bossDownSwingResult));
+  if (
+    bossDownSwingResult === 'no-boss' ||
+    !bossDownSwingResult.active ||
+    bossDownSwingResult.after !== bossDownSwingResult.before - 1 ||
+    bossDownSwingResult.hurtAfter !== bossDownSwingResult.hurtBefore
+  ) {
+    throw new Error(`Boss down-swing regression: ${JSON.stringify(bossDownSwingResult)}`);
+  }
+
   // hammer the boss with direct hits to verify the defeat flow
   await page.evaluate(() => {
     const p = window.__game.scene.getScene('Planet');
