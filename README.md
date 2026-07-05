@@ -13,8 +13,11 @@ Full design + roadmap: [PLAN.md](PLAN.md)
 
 - **Move/Aim** — arrows or WASD · **Jump** — space (stomp lil monsters!) · **Attack** — X or J
   while holding a direction
+- **B** — fire the **Spaceblaster** (once you've found it on Jupiter)
 - **E** — use (fly home at your rocket) · **F** — eat food · **I** — bag · **M** — sound on/off
 - Beat a planet's boss → earn its shard **+1 heart**, and unlock the next world.
+  The map **branches at Earth**: go inward underground (Venus → Mercury) or
+  outward along the main spine (Mars → Jupiter → … → Pluto).
 - Sign in with just a **name + 4-digit PIN** to keep progress across computers,
   or play as guest (saves on this computer).
 
@@ -30,6 +33,35 @@ node scripts/playtest.mjs /tmp   # automated browser playtest w/ screenshots
 Deploys to GitHub Pages automatically on push to `main`.
 
 ## Status (as of 2026-07-05)
+
+### Latest round — feedback batch + a shipped freeze fix
+
+- **Fixed a game-breaking boss-fight freeze** (was live). Two bugs behind one
+  symptom (total freeze, music kept playing = the render loop died on an
+  uncaught exception): (1) a sword/blaster killing a monster destroyed it
+  *mid-iteration*, and (2) the per-frame debris/rock sweep destroyed objects
+  mid-iteration — both corrupt Phaser's cached-length group iteration into an
+  `undefined.active` throw. Plus a scene-event listener leak that piled up N×
+  rocks over many landings. Guarded by `scripts/bossfreezetest.mjs`.
+- **10 worlds, branching map.** Added **Venus & Mercury** as enclosed
+  **underground cave** levels (real floor+ceiling tube corridors, glowing
+  crystals, no sky) with their own bosses + music. The map now **branches at
+  Earth**: inward underground (Venus → Mercury) or outward (Mars → … → Pluto).
+- **Boss encounters** now seal the arena behind you (a shimmering energy wall —
+  no fleeing mid-fight; mid-fight deaths respawn inside) and swap in dedicated
+  **battle music** the moment you reach the boss.
+- **Killable flame-dropper robots** that hover in reach and drop fire, plus
+  **horizontal flying debris** — replacing the old "unkillable, sourceless"
+  falling hazards on several worlds.
+- **Spaceblaster** — a functional ranged weapon found on Jupiter (press **B**).
+- **Per-planet fruit shapes** and an **X/X shard goal** counter with an
+  "all collected!" celebration per world.
+- **"Who's playing?" boot screen** — the loading board now shows every visit,
+  then offers Continue vs. New player so two kids can keep separate saves.
+
+Smoke-tested live across all 10 planets (each loads clean, boss art renders,
+loop stays live, zero page errors) after the batch.
+
 
 Live at https://kaiser-factorial.github.io/solar-game/ — **all 8 worlds now
 playable**: Moon → Mars → Earth → Jupiter → Saturn → Uranus → Neptune → Pluto
