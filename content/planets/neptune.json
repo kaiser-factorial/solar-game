@@ -1,0 +1,19 @@
+{
+  "id": "neptune",
+  "name": "Neptune",
+  "palette": { "ground": "#141a3d", "sky": "#050814", "accent": "#7fe8ff" },
+  "terrain": { "generator": "hills", "seed": 219, "width": 250, "verticality": 0.7 },
+  "gravity": 0.68,
+  "collectibles": {
+    "treasure": { "id": "storm-sapphire", "name": "Storm Sapphire", "count": 14 },
+    "food": { "id": "gale-plum", "name": "Gale Plum", "heals": 1, "count": 6 }
+  },
+  "monsters": [
+    { "id": "squallback", "name": "Squallback", "hp": 7, "damage": 1.5, "behavior": "chase", "speed": 150, "count": 5 },
+    { "id": "riptide-stalker", "name": "Riptide Stalker", "hp": 6, "damage": 1.5, "behavior": "jumper", "speed": 120, "count": 4, "actionCooldownMs": 1800 },
+    { "id": "storm-sentinel", "name": "Storm Sentinel", "hp": 5, "damage": 1, "behavior": "hover-shoot", "speed": 90, "count": 4, "flyHeight": 4, "actionCooldownMs": 2200 }
+  ],
+  "boss": { "id": "maelstrom-warden", "name": "The Maelstrom Warden", "hp": 85, "damage": 2, "speed": 140, "specials": ["rockThrow", "projectileBarrage", "groundPound"], "phases": 3, "minionMonsterId": "storm-sentinel", "maxMinions": 2, "midFightPowerup": true },
+  "hazards": { "debris": { "intervalMs": 900, "damage": 1, "speed": 260 } },
+  "celebration": "scanline"
+}

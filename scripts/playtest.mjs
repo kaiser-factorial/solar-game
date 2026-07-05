@@ -35,7 +35,7 @@ try {
   await page.evaluate(() => {
     const g = window.__game;
     const cc = g.scene.getScene('CharacterCreator');
-    cc.ch = { skin: 1, hair: 3, suit: 2, visor: 0 };
+    cc.ch = { skin: 1, hair: 3, suit: 2, visor: 0, accessory: 5, pattern: 3 };
     cc.refresh();
   });
   await sleep(300);

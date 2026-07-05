@@ -3,6 +3,7 @@ import { state } from '../systems/save';
 import { ORB_COLORS } from '../content';
 import { txt, makeButton, sprinkleStars, toast } from '../systems/ui';
 import { audio } from '../systems/audio';
+import { setSettingsOpen, isSettingsOpen } from '../react/settingsStore';
 
 interface BodySpec {
   id: string;
@@ -13,17 +14,25 @@ interface BodySpec {
   playable?: boolean;
 }
 
-// Real orbits, fixed unlock order (PLAN.md §3.6). Phase 3 makes travel orbital.
+// Real orbits (visual only). Gameplay unlock order is separate — see UNLOCK_ORDER —
+// since the difficulty ramp (Moon→Mars→Earth→gas giants→ice worlds) doesn't match
+// real orbital distance from the sun.
 const BODIES: BodySpec[] = [
   { id: 'mercury', name: 'Mercury', r: 55, size: 4, color: 0x9c9c9c },
   { id: 'venus', name: 'Venus', r: 82, size: 7, color: 0xd9a35a },
-  { id: 'earth', name: 'Earth', r: 112, size: 8, color: 0x4a90d9 },
+  { id: 'earth', name: 'Earth', r: 112, size: 8, color: 0x4a90d9, playable: true },
   { id: 'mars', name: 'Mars', r: 152, size: 6, color: 0xc1440e, playable: true },
-  { id: 'jupiter', name: 'Jupiter', r: 202, size: 15, color: 0xc9a06c },
-  { id: 'saturn', name: 'Saturn', r: 247, size: 13, color: 0xd8c07a },
-  { id: 'uranus', name: 'Uranus', r: 287, size: 9, color: 0x7fd4d4 },
-  { id: 'neptune', name: 'Neptune', r: 322, size: 9, color: 0x4666ff },
+  { id: 'jupiter', name: 'Jupiter', r: 202, size: 15, color: 0xc9a06c, playable: true },
+  { id: 'saturn', name: 'Saturn', r: 247, size: 13, color: 0xd8c07a, playable: true },
+  { id: 'uranus', name: 'Uranus', r: 287, size: 9, color: 0x7fd4d4, playable: true },
+  { id: 'neptune', name: 'Neptune', r: 322, size: 9, color: 0x4666ff, playable: true },
+  { id: 'pluto', name: 'Pluto', r: 358, size: 4, color: 0xbfe8ff, playable: true },
 ];
+
+// The actual play/unlock progression — each world opens once the previous one's
+// boss falls. Moon is the fixed starting point and isn't in BODIES (it orbits
+// Earth's node instead, see moonNode below).
+const UNLOCK_ORDER = ['moon', 'mars', 'earth', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
 
 const CX = 480;
 const CY = 300;
@@ -100,7 +109,7 @@ export class StarMapScene extends Phaser.Scene {
       '#9fb0d8'
     ).setOrigin(0, 0.5);
     this.drawStatusRow();
-    makeButton(this, 924, 28, '⚙', () => this.scene.launch('Settings'));
+    makeButton(this, 924, 28, '⚙', () => setSettingsOpen(true));
     txt(this, 480, 520, 'Click a glowing world to land!', 16, '#9fb0d8');
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.handleClick(p));
@@ -130,9 +139,9 @@ export class StarMapScene extends Phaser.Scene {
   }
 
   private landable(id: string): boolean {
-    if (id === 'moon') return true;
-    if (id === 'mars') return !!state.save.planets['moon']?.bossDefeated;
-    return false;
+    const idx = UNLOCK_ORDER.indexOf(id);
+    if (idx <= 0) return idx === 0; // moon (idx 0) is always open; non-progression bodies (-1) never are
+    return !!state.save.planets[UNLOCK_ORDER[idx - 1]]?.bossDefeated;
   }
 
   private nodeFor(id: string): Phaser.GameObjects.Container | undefined {
@@ -153,7 +162,7 @@ export class StarMapScene extends Phaser.Scene {
   }
 
   private handleHover(p: Phaser.Input.Pointer): void {
-    if (this.scene.isActive('Settings')) return;
+    if (isSettingsOpen()) return;
     const hit = this.hitTest(p.x, p.y);
     if (hit === this.hovered) return;
 
@@ -190,7 +199,7 @@ export class StarMapScene extends Phaser.Scene {
   }
 
   private handleClick(p: Phaser.Input.Pointer): void {
-    if (this.scene.isActive('Settings')) return;
+    if (isSettingsOpen()) return;
     const hit = this.hitTest(p.x, p.y);
     if (!hit) return;
     if (this.landable(hit)) {
@@ -202,9 +211,15 @@ export class StarMapScene extends Phaser.Scene {
       return;
     }
     audio.sfx('denied');
-    if (hit === 'mars') toast(this, 'Mars is locked — beat the Moon boss first!');
-    else if (hit === 'earth') toast(this, 'Earth — coming soon!');
-    else toast(this, `${BODIES.find((b) => b.id === hit)?.name ?? hit} — coming soon!`);
+    const name = BODIES.find((b) => b.id === hit)?.name ?? hit;
+    const idx = UNLOCK_ORDER.indexOf(hit);
+    if (idx > 0) {
+      const prev = UNLOCK_ORDER[idx - 1];
+      const prevName = prev === 'moon' ? 'Moon' : (BODIES.find((b) => b.id === prev)?.name ?? prev);
+      toast(this, `${name} is locked — beat the ${prevName} boss first!`);
+    } else {
+      toast(this, `${name} — not a landable world.`);
+    }
   }
 
   update(_time: number, delta: number): void {
@@ -229,7 +244,7 @@ export class StarMapScene extends Phaser.Scene {
 
     // glow rings on landable worlds, shard badge on beaten ones
     const pulse = 0.35 + 0.25 * Math.sin(_time / 300);
-    for (const id of ['moon', 'mars']) {
+    for (const id of UNLOCK_ORDER) {
       const pos = this.positions[id];
       if (!pos) continue;
       if (state.save.planets[id]?.bossDefeated) {

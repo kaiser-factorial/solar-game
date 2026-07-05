@@ -5,6 +5,10 @@ export interface Character {
   hair: number;
   suit: number;
   visor: number;
+  /** Wearable extra: none/star clip/bandana/backpack glow/shoulder pads/antenna. */
+  accessory: number;
+  /** Suit chest decal: none/stripe/dots/star/bolt/heart. */
+  pattern: number;
 }
 
 export interface PlanetProgress {
@@ -107,6 +111,24 @@ class GameState {
     if (character) this.character = character;
     this.playerName = playerName || this.playerName;
     this.touch();
+  }
+
+  /**
+   * Sign-out must wipe local state too, not just the Supabase session —
+   * otherwise the previous account's save/character silently reloads on the
+   * very next hard refresh (loadLocal() has no way to know you signed out).
+   */
+  resetForSignOut() {
+    this.save = defaultSave();
+    this.character = null;
+    this.playerName = 'Scout';
+    this.authed = false;
+    try {
+      localStorage.removeItem(LOCAL_KEY);
+    } catch {
+      /* storage blocked — nothing to clear */
+    }
+    for (const h of [...this.handlers]) h();
   }
 
   planet(id: string): PlanetProgress {

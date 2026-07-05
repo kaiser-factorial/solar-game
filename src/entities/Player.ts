@@ -18,7 +18,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setSize(20, 42);
-    body.setOffset(8, 4);
+    // Texture is 54px tall now (was 48) — 6px of headroom above the helmet
+    // for the Antenna accessory — so the offset shifts down to match.
+    body.setOffset(8, 10);
     this.setDepth(5);
   }
 
@@ -51,10 +53,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       body.setVelocityX(intent.moveX * BALANCE.playerSpeed * speedMult);
     }
     if (intent.jump && body.blocked.down) {
-      // Same jump height on every planet; gravity shapes the arc.
-      body.setVelocityY(
-        -Math.sqrt(2 * this.scene.physics.world.gravity.y * BALANCE.jumpHeight)
-      );
+      // Fixed launch velocity — peak height now genuinely depends on each
+      // planet's own gravity (see BALANCE.jumpVelocity for why).
+      body.setVelocityY(-BALANCE.jumpVelocity);
       audio.sfx('jump');
     }
     if (intent.attack && time >= this.nextAttackAt) {

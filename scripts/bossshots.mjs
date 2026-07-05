@@ -17,7 +17,7 @@ async function bossOn(planetId, tag) {
   // Skip straight past sign-in + creator into the planet, then to the boss.
   await page.evaluate((pid) => {
     const g = window.__game;
-    const st = { skin: 1, hair: 3, suit: 2, visor: 0 };
+    const st = { skin: 1, hair: 3, suit: 2, visor: 0, accessory: 0, pattern: 0 };
     const save = JSON.parse(localStorage.getItem('solar-scouts-v1') || '{}');
     // ensure mars is unlocked for its boss
     const data = { save: { version: 1, settings: { controls: 'keyboard', sound: 'off' }, hearts: { max: 4, current: 4 }, orbs: [], currentPlanet: '', inventory: {}, planets: { moon: { bossDefeated: false } } }, character: st, playerName: 'Kiddo' };
@@ -29,17 +29,20 @@ async function bossOn(planetId, tag) {
     g.scene.start('Planet', { planetId: pid });
   }, planetId);
   await sleep(1400);
-  // walk player into the boss arena, then stand right next to the boss for the photo
-  await page.evaluate(() => {
-    const p = window.__game.scene.getScene('Planet');
-    p.player.setPosition(p.arenaX + 130, 260);
-  });
-  await sleep(400);
+  // Stand right next to the boss for the photo. Positioned relative to the
+  // boss's own (already-grounded) y rather than a fixed screen y — planets
+  // with steeper terrain (verticality) can put the arena floor well off a
+  // hardcoded height, dropping the player into a pit/hazard instead.
   await page.evaluate(() => {
     const p = window.__game.scene.getScene('Planet');
     if (p.boss) {
-      p.player.setPosition(p.boss.x - 110, p.boss.y);
+      const body = p.player.body;
+      body.reset(p.boss.x - 110, p.boss.y);
+      body.setVelocity(0, 0);
       p.cameras.main.centerOn(p.boss.x - 40, p.boss.y);
+      // Screenshot-only concession: the later planets' aggressive debris/boss
+      // specials can otherwise respawn the idle player mid-photo. Not shipped.
+      p.player.invulnUntil = Number.MAX_SAFE_INTEGER;
     }
   });
   await sleep(2000);
@@ -58,6 +61,12 @@ try {
   await sleep(2500);
   await bossOn('moon', 'moonster');
   await bossOn('mars', 'redbaron');
+  await bossOn('earth', 'brambleward');
+  await bossOn('jupiter', 'stormlord');
+  await bossOn('saturn', 'cronusward');
+  await bossOn('uranus', 'cryovex');
+  await bossOn('neptune', 'maelstrom');
+  await bossOn('pluto', 'kuiperward');
 } finally {
   console.log('LOGS:', logs.join('\n') || 'clean');
   await browser.close();

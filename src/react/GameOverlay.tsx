@@ -12,6 +12,8 @@ import {
 } from 'puxel';
 import { state } from '../systems/save';
 import { getScene, subscribeScene } from './sceneStore';
+import { SettingsPanel } from './SettingsPanel';
+import { CharacterCreatorPanel } from './CharacterCreatorPanel';
 
 /**
  * DOM overlay rendered inside game.domContainer, above the Phaser canvas.
@@ -48,11 +50,12 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
     };
   }, [game]);
 
-  const showHearts = scene === 'planet' || scene === 'starmap';
-  const heartsTop = scene === 'starmap' ? 58 : 8;
+  // HP is a live-combat resource — showing it on the star map (where nothing
+  // can hurt you) is just clutter, per playtest feedback.
+  const showHearts = scene === 'planet';
 
   return (
-    <ThemeProvider defaultTheme="arcade" storageKey={null}>
+    <ThemeProvider defaultTheme="arcade" storageKey="moonshard-theme">
       {/* Not using useToast() yet, but this is the documented standard
           scaffolding alongside ThemeProvider — wiring it in now means any
           future toast (e.g. "signed in!") just calls the hook, no restructure. */}
@@ -79,7 +82,7 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
         {showHearts && (
           <div
             className="px-pixelated"
-            style={{ position: 'absolute', left: 16, top: heartsTop, width: 168, pointerEvents: 'none' }}
+            style={{ position: 'absolute', left: 16, top: 8, width: 168, pointerEvents: 'none' }}
           >
             {/* cells=max so each pip is exactly one heart (the default cells=10
                 is meant for percentage-style HP pools, not our small 3-10 count) */}
@@ -139,6 +142,7 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
             </span>
           </div>
         )}
+        {scene === 'creator' && <CharacterCreatorPanel game={game} />}
         {celebration && (
           <GlobalAnimation
             key={celebration.id}
@@ -149,6 +153,11 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
             style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
           />
         )}
+        {/* The rest of this overlay is pointerEvents:none (decorative) —
+            reset it here since Settings needs real clicks. */}
+        <div style={{ pointerEvents: 'auto' }}>
+          <SettingsPanel game={game} />
+        </div>
       </ToastProvider>
     </ThemeProvider>
   );

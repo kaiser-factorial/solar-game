@@ -1,7 +1,12 @@
 /** All gameplay tuning lives here — tweak with the nephews! */
 export const BALANCE = {
   playerSpeed: 230,
-  jumpHeight: 215, // px — arc shape varies with planet gravity, height stays fair
+  // Jump is a FIXED launch velocity, not a fixed peak height — peak height
+  // = jumpVelocity^2 / (2 * gravity.y) falls out naturally, so real relative
+  // planetary gravity actually changes how high you can jump (heavier =
+  // lower jumps, lighter = soaring ones), instead of every planet secretly
+  // reaching the same height with just a different arc speed.
+  jumpVelocity: 630,
   attackCooldownMs: 340,
   attackDurationMs: 140,
   attackReach: 40,
@@ -20,9 +25,12 @@ export const BALANCE = {
   bossChargeCooldownMs: 3200,
   bossChargeSpeedMult: 3.2,
   bossRockCooldownMs: 2800,
-  bossRockCooldownEnragedMs: 1800,
   bossRockSpeed: 220,
   bossRockDamage: 1,
+  bossBarrageSpreadDeg: 22,
+  bossGroundPoundRadius: 110,
+  bossGroundPoundDamage: 1,
+  bossMinionCooldownMs: 9000,
   tile: 32,
   worldHeight: 540,
   // Eating food at full health powers you up instead of doing nothing.

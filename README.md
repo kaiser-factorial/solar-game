@@ -31,16 +31,71 @@ Deploys to GitHub Pages automatically on push to `main`.
 
 ## Status (as of 2026-07-05)
 
-Live at https://kaiser-factorial.github.io/solar-game/ — Moon + Mars playable,
+Live at https://kaiser-factorial.github.io/solar-game/ — **all 8 worlds now
+playable**: Moon → Mars → Earth → Jupiter → Saturn → Uranus → Neptune → Pluto
+& the Kuiper Belt, each unlocked by beating the previous world's boss. Plus:
 character creator, star map with animated orbits + greyed-out locked planets,
-hearts/shards HUD, seeded terrain, stomp attack, per-boss art (The Moonster /
-The Red Baron) with wake/enrage effects, composed 8-bit music + SFX, name+PIN
-auth via Supabase ("catchall" project — table setup + RLS done). **Name+PIN
-sign-in is fully working** — verified directly against the live project
-(`node scripts/authtest.mjs`): sign-up, sign-in, and the save round-trip all
-succeed with a real session. (An earlier note here said "Confirm email" might
-still be blocking this — that's now confirmed stale, whether because it was
-already off or got flipped along the way; either way, it works.)
+hearts/shards HUD, seeded terrain, stomp attack, bespoke per-boss art for all
+8 bosses with wake/enrage effects, composed 8-bit music + SFX (a distinct
+chiptune per planet), name+PIN auth via Supabase ("catchall" project — table
+setup + RLS done). **Name+PIN sign-in is fully working** — verified directly
+against the live project (`node scripts/authtest.mjs`): sign-up, sign-in, and
+the save round-trip all succeed with a real session. (An earlier note here said
+"Confirm email" might still be blocking this — that's now confirmed stale,
+whether because it was already off or got flipped along the way; either way, it
+works.)
+
+### The full solar system (Moon/Mars → 6 new worlds)
+
+Each new planet is a `content/planets/*.json` file (data, not code) with its own
+palette, music, monsters, boss, collectibles, and — new this round — **real
+relative gravity** and an escalating difficulty curve:
+
+- **Real planetary gravity.** Jump is now a fixed launch *velocity*, so peak
+  height genuinely falls out of each world's gravity (`peak = v²/2g`). Heavy
+  worlds (Jupiter, g≈0.95) give short, grounded hops; light ones (Moon 0.17,
+  Pluto 0.19) let you soar. Values are hand-curated to preserve the real
+  *ordering* while staying inside the 540px world height (literal real ratios
+  would rocket Pluto off-screen and pin Jupiter's jumps to nearly zero). Floating
+  platforms scale their height to each world's actual jump reach
+  (`terrain.ts maxJumpTiles()`), so nothing is ever unreachable.
+- **Varied verticality.** A zone-based generator (`src/systems/terrain.ts`)
+  produces real sustained climbs/descents/plateaus, scaled by each planet's
+  `verticality` (Earth 0.4 → Pluto 0.8), instead of flat ground with mild bumps.
+- **Monster archetypes.** Beyond the original wander/chase: `fly` (ignores
+  gravity, drifts), `hover-shoot` (holds altitude, fires slow aimed shots),
+  and `jumper` (leaps at you on a cooldown). Later planets mix 3 types.
+- **Boss escalation.** A generalized system (`BossDef`): `specials` (rockThrow /
+  projectileBarrage / groundPound / summonMinions, cycled round-robin), 2–3
+  `phases` that visibly enrage at HP thresholds, `minionMonsterId`/`maxMinions`
+  for summoned reinforcements, and `midFightPowerup` (a comeback pickup that
+  drops when the boss hits its final phase). The Moon/Mars bosses are
+  deliberately left simple; difficulty ramps from there to the Kuiper Warden.
+- **Distinct celebrations.** Shard pickup rotates the Puxel `GlobalAnimation`
+  variant per planet (confetti / coin-rain / scanline …) so it never feels
+  copy-pasted.
+
+**Verified by a 7-agent live playtester panel** (one agent per new planet + one
+for the star-map unlock chain), each driving the real game in a browser — not
+reading source. All 7 came back passing: palettes, terrain verticality, gravity/
+jump math, every monster archetype, debris hazards, and every boss (specials
+firing, phase escalation at the right HP fractions, minion caps, mid-fight
+powerups, defeat → orb → celebration) all checked out against each planet's JSON.
+Debris spawning was independently re-confirmed clean on all six hazard planets
+after the panel (the panel's shared-machine CPU contention had made it hard for
+the agents to observe live). Two real issues found and fixed along the way:
+
+- **Boss down-swing dealt phantom damage.** Arcade Physics runs overlap
+  callbacks in registration order within a step, and the player-vs-boss
+  touch-damage overlap was registered *before* the slash-hit overlap — so a
+  clean downward hit registered damage to the boss but the same-frame touch
+  check hadn't yet seen the "just hit it" protection flag, and hurt the player
+  anyway. Fixed by registering the slash overlaps first. (`scripts/playtest.mjs`
+  asserts this: a down-swing that lands must not change the player's i-frame
+  timer.)
+- **Banners could overlap.** Landing on a planet then immediately rushing the
+  boss arena stacked the "&lt;PLANET&gt;" and "&lt;BOSS&gt;!!" banners at the same
+  screen position into unreadable text. Now each banner clears the previous one.
 
 ### Recently fixed from playtesting
 

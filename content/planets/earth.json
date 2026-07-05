@@ -1,0 +1,18 @@
+{
+  "id": "earth",
+  "name": "Earth",
+  "palette": { "ground": "#2f7d4f", "sky": "#7ec8e3", "accent": "#e8d24a" },
+  "terrain": { "generator": "hills", "seed": 15, "width": 230, "verticality": 0.4 },
+  "gravity": 0.62,
+  "collectibles": {
+    "treasure": { "id": "green-emerald", "name": "Green Emerald", "count": 12 },
+    "food": { "id": "honey-apple", "name": "Honey Apple", "heals": 1, "count": 6 }
+  },
+  "monsters": [
+    { "id": "thistle-hopper", "name": "Thistle Hopper", "hp": 3, "damage": 1, "behavior": "jumper", "speed": 80, "count": 4, "actionCooldownMs": 2200 },
+    { "id": "sky-swooper", "name": "Sky Swooper", "hp": 3, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 4, "actionCooldownMs": 2600 }
+  ],
+  "boss": { "id": "bramble-warden", "name": "The Bramble Warden", "hp": 26, "damage": 1.5, "speed": 95, "specials": ["rockThrow", "groundPound"], "phases": 2, "midFightPowerup": false },
+  "hazards": { "debris": { "intervalMs": 2400, "damage": 1, "speed": 160 } },
+  "celebration": "confetti"
+}

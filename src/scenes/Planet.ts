@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../systems/balance';
 import { mulberry32 } from '../systems/rng';
+import { generateHeights, maxJumpTiles } from '../systems/terrain';
 import { state } from '../systems/save';
 import { PLANETS, ORB_COLORS, FOOD_HEALS, hexToInt, type PlanetDef } from '../content';
 import { ensurePlayerTexture } from '../systems/textures';
@@ -64,18 +65,7 @@ export class PlanetScene extends Phaser.Scene {
 
     // --- terrain (seeded: identical on every visit & device) ---
     const rng = mulberry32(def.terrain.seed);
-    let h = 4;
-    for (let i = 0; i < cols; i++) {
-      if (i < 6) h = 4;
-      else if (i >= cols - 26) h = 3; // flat boss arena
-      else {
-        const r = rng();
-        if (r < 0.3) h -= 1;
-        else if (r < 0.6) h += 1;
-        h = Phaser.Math.Clamp(h, 2, 8);
-      }
-      this.heights.push(h);
-    }
+    this.heights = generateHeights(rng, cols, def.terrain.verticality ?? 0.2);
     this.ground = this.physics.add.staticGroup();
     for (let i = 0; i < cols; i++) {
       const hh = this.heights[i] * TILE;
@@ -85,11 +75,16 @@ export class PlanetScene extends Phaser.Scene {
     const groundTop = (col: number) => H - this.heights[col] * TILE;
 
     // --- floating platforms (verticality — separate from base ground, so
-    //     existing collectible/monster placement math is untouched) ---
+    //     existing collectible/monster placement math is untouched).
+    //     stepsAbove is scaled to THIS planet's actual jump reach — a fixed
+    //     "3-5 tiles up" would be unreachable on a heavy planet like Jupiter
+    //     (~2.5 tile jump) and wastefully modest on a floaty one like Pluto. ---
+    const jumpTiles = maxJumpTiles(def.gravity);
+    const platformMaxSteps = Math.max(2, Math.floor(jumpTiles * 0.65));
     for (let i = 10; i < cols - 30; ) {
       if (rng() < BALANCE.platformChance) {
         const width = 2 + Math.floor(rng() * 3);
-        const stepsAbove = 3 + Math.floor(rng() * 3);
+        const stepsAbove = 2 + Math.floor(rng() * Math.max(1, platformMaxSteps - 1));
         let highestTop = H;
         for (let c = i; c < i + width && c < cols; c++) highestTop = Math.min(highestTop, groundTop(c));
         const platformY = highestTop - stepsAbove * TILE;
@@ -109,7 +104,10 @@ export class PlanetScene extends Phaser.Scene {
     this.spawnPoint = { x: this.rocketX + 40, y: groundTop(3) - 60 };
 
     // --- player + controls ---
-    const texKey = ensurePlayerTexture(this, state.character ?? { skin: 0, hair: 1, suit: 2, visor: 0 });
+    const texKey = ensurePlayerTexture(
+      this,
+      state.character ?? { skin: 0, hair: 1, suit: 2, visor: 0, accessory: 0, pattern: 0 }
+    );
     this.player = new Player(this, this.spawnPoint.x, this.spawnPoint.y, texKey);
     this.controls = createControls(this);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -178,23 +176,73 @@ export class PlanetScene extends Phaser.Scene {
       });
     }
     this.bossRocks = this.physics.add.group();
-    this.events.on('boss-special', (payload: { type: string; x: number; y: number }) => {
-      if (payload.type !== 'rockThrow' || !this.player) return;
-      const dx = this.player.x - payload.x;
-      const dy = this.player.y - payload.y;
-      const dist = Math.max(1, Math.hypot(dx, dy));
-      const rock = this.physics.add
-        .image(payload.x, payload.y, 'debris')
-        .setTint(accent)
-        .setDepth(6);
-      (rock.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
-      (rock.body as Phaser.Physics.Arcade.Body).setVelocity(
-        (dx / dist) * BALANCE.bossRockSpeed,
-        (dy / dist) * BALANCE.bossRockSpeed - 160 // a little arc, not a flat laser
-      );
-      this.tweens.add({ targets: rock, angle: 360, duration: 500, repeat: -1 });
-      this.bossRocks.add(rock);
-    });
+    this.events.on(
+      'boss-special',
+      (payload: {
+        type: string;
+        x: number;
+        y: number;
+        targetX?: number;
+        targetY?: number;
+        minionId?: string;
+        max?: number;
+      }) => {
+        if (!this.player) return;
+        switch (payload.type) {
+          case 'rockThrow':
+            this.spawnRock(payload.x, payload.y, this.player.x, this.player.y, accent);
+            break;
+          case 'projectileBarrage': {
+            const baseAngle = Math.atan2(
+              (payload.targetY ?? this.player.y) - payload.y,
+              (payload.targetX ?? this.player.x) - payload.x
+            );
+            const spread = Phaser.Math.DegToRad(BALANCE.bossBarrageSpreadDeg);
+            for (const off of [-spread, 0, spread]) {
+              const a = baseAngle + off;
+              this.spawnRock(
+                payload.x,
+                payload.y,
+                payload.x + Math.cos(a) * 200,
+                payload.y + Math.sin(a) * 200,
+                accent
+              );
+            }
+            break;
+          }
+          case 'groundPound': {
+            const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, payload.x, payload.y);
+            if (dist < BALANCE.bossGroundPoundRadius) {
+              this.hurtPlayer(BALANCE.bossGroundPoundDamage, payload.x);
+            }
+            break;
+          }
+          case 'summonMinions': {
+            const mdef = def.monsters.find((m) => m.id === payload.minionId);
+            if (!mdef) break;
+            const activeMinions = this.monsters.getChildren().filter((m) => m.active && m.getData('isMinion')).length;
+            const toSpawn = Math.max(0, (payload.max ?? 2) - activeMinions);
+            for (let n = 0; n < toSpawn; n++) {
+              const spawnX = payload.x + (n - toSpawn / 2) * 48;
+              const m = new Monster(this, spawnX, payload.y - 60, mdef, accent);
+              m.setCollideWorldBounds(true).setData('isMinion', true);
+              this.monsters.add(m);
+              this.poof(spawnX, payload.y - 60, accent);
+            }
+            break;
+          }
+          case 'powerupDrop':
+            this.spawnMidFightPowerup(payload.x, payload.y);
+            break;
+        }
+      }
+    );
+    this.events.on(
+      'monster-special',
+      (payload: { type: string; x: number; y: number; targetX: number; targetY: number }) => {
+        if (payload.type === 'shoot') this.spawnRock(payload.x, payload.y, payload.targetX, payload.targetY, accent);
+      }
+    );
 
     // --- physics wiring ---
     this.slashes = this.physics.add.group({ allowGravity: false });
@@ -231,6 +279,25 @@ export class PlanetScene extends Phaser.Scene {
       this.collect(it.getData('itemId') as string, it.getData('kind') as string, it.x, it.y);
       it.destroy();
     });
+    // Slash-vs-enemy overlaps are registered before the player-vs-enemy touch
+    // overlaps below so a hit that lands this frame calls protectPlayerFrom()
+    // in time — Arcade Physics runs overlap callbacks in registration order
+    // within a single step, and touch-damage must see that same-frame flag.
+    this.physics.add.overlap(this.slashes, this.monsters, (s, m) => {
+      const slash = this.arcadeObject<Phaser.Physics.Arcade.Image>(s);
+      const mon = this.arcadeObject<Monster>(m);
+      this.hitMonsterWithSlash(slash, mon);
+    });
+    if (this.boss) {
+      this.physics.add.overlap(this.slashes, this.boss, (s, b) => {
+        const slash = this.arcadeObject<Phaser.Physics.Arcade.Image>(s);
+        void b;
+        const boss = this.boss;
+        if (!boss) return;
+        if (!boss.active) return;
+        this.hitBossWithSlash(slash, boss);
+      });
+    }
     this.physics.add.overlap(this.player, this.monsters, (_p, m) => {
       const mon = this.arcadeObject<Monster>(m);
       // Falling onto a lil guy from above = a Mario-style stomp.
@@ -250,24 +317,11 @@ export class PlanetScene extends Phaser.Scene {
       if (this.isPlayerProtectedFrom(mon)) return;
       this.hurtPlayer(mon.def.damage, mon.x);
     });
-    this.physics.add.overlap(this.slashes, this.monsters, (s, m) => {
-      const slash = this.arcadeObject<Phaser.Physics.Arcade.Image>(s);
-      const mon = this.arcadeObject<Monster>(m);
-      this.hitMonsterWithSlash(slash, mon);
-    });
     if (this.boss) {
       this.physics.add.overlap(this.player, this.boss, () => {
         if (this.boss?.awake && !this.isPlayerProtectedFrom(this.boss)) {
           this.hurtPlayer(def.boss.damage, this.boss.x);
         }
-      });
-      this.physics.add.overlap(this.slashes, this.boss, (s, b) => {
-        const slash = this.arcadeObject<Phaser.Physics.Arcade.Image>(s);
-        void b;
-        const boss = this.boss;
-        if (!boss) return;
-        if (!boss.active) return;
-        this.hitBossWithSlash(slash, boss);
       });
     }
 
@@ -325,6 +379,37 @@ export class PlanetScene extends Phaser.Scene {
     this.game.events.emit('ss-celebrate', { variant: 'sparkles', tone: 'success' });
     this.floaty(this.player.x, this.player.y - 40, 'POWERED UP!', '#ffe066');
     toast(this, 'Speed & attack boosted for a bit!');
+  }
+
+  /** One rock arcing toward (targetX, targetY) — shared by rockThrow and projectileBarrage. */
+  private spawnRock(x: number, y: number, targetX: number, targetY: number, tint: number): void {
+    const dx = targetX - x;
+    const dy = targetY - y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    const rock = this.physics.add.image(x, y, 'debris').setTint(tint).setDepth(6);
+    const body = rock.body as Phaser.Physics.Arcade.Body;
+    body.setAllowGravity(true);
+    body.setVelocity((dx / dist) * BALANCE.bossRockSpeed, (dy / dist) * BALANCE.bossRockSpeed - 160);
+    this.tweens.add({ targets: rock, angle: 360, duration: 500, repeat: -1 });
+    this.bossRocks.add(rock);
+  }
+
+  /** A boss entering its toughest phase drops a grabbable comeback powerup. */
+  private spawnMidFightPowerup(x: number, y: number): void {
+    const orb = this.physics.add.image(x, y, 'orb').setTint(0xffe066).setDepth(6);
+    orb.setBounce(0.4);
+    this.physics.add.collider(orb, this.ground);
+    this.tweens.add({ targets: orb, scale: 1.5, yoyo: true, repeat: -1, duration: 400 });
+    this.physics.add.overlap(this.player, orb, () => {
+      if (!orb.active) return;
+      orb.destroy();
+      this.grantPowerup();
+    });
+    this.time.delayedCall(12000, () => {
+      if (orb.active) {
+        this.tweens.add({ targets: orb, alpha: 0, duration: 500, onComplete: () => orb.destroy() });
+      }
+    });
   }
 
   private hurtPlayer(damage: number, fromX: number): void {
@@ -486,7 +571,7 @@ export class PlanetScene extends Phaser.Scene {
       orb.destroy();
       state.addOrb(this.planetId);
       audio.sfx('orb');
-      this.game.events.emit('ss-celebrate', { variant: 'confetti', tone: 'success' });
+      this.game.events.emit('ss-celebrate', { variant: this.def.celebration ?? 'confetti', tone: 'success' });
       this.banner(`${this.def.name.toUpperCase()} SHARD GET!  +1 ♥`, ORB_COLORS[this.planetId]);
       this.relocateRocket(orbX);
       toast(this, 'Your ride is here — press E to fly home!');
@@ -523,9 +608,18 @@ export class PlanetScene extends Phaser.Scene {
     this.tweens.add({ targets: t, y: y - 30, alpha: 0, duration: 800, onComplete: () => t.destroy() });
   }
 
+  private activeBanner?: Phaser.GameObjects.Text;
   private banner(s: string, tintColor = 0xffe08a): void {
+    // Only one banner on screen at a time — otherwise landing on a planet and
+    // immediately rushing the boss arena stacks the "<PLANET>" and "<BOSS>!!"
+    // banners at the same spot into unreadable overlapping text.
+    this.activeBanner?.destroy();
     const color = '#' + tintColor.toString(16).padStart(6, '0');
     const t = txt(this, 480, 200, s, 34, color).setScrollFactor(0).setDepth(300).setScale(0.3);
+    this.activeBanner = t;
+    t.once(Phaser.GameObjects.Events.DESTROY, () => {
+      if (this.activeBanner === t) this.activeBanner = undefined;
+    });
     this.tweens.add({ targets: t, scale: 1, duration: 300, ease: 'Back.out' });
     this.time.delayedCall(2000, () =>
       this.tweens.add({ targets: t, alpha: 0, duration: 400, onComplete: () => t.destroy() })
@@ -554,7 +648,7 @@ export class PlanetScene extends Phaser.Scene {
     }
 
     this.monsters.children.iterate((m) => {
-      (m as Monster).walk(time, this.player);
+      (m as Monster).act(time, this.player);
       return true;
     });
 

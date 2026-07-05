@@ -117,6 +117,5 @@ export async function restoreSession(): Promise<void> {
 
 export async function signOutUser(): Promise<void> {
   if (supabase) await supabase.auth.signOut();
-  state.authed = false;
-  state.touch();
+  state.resetForSignOut();
 }

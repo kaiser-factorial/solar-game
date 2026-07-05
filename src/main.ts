@@ -5,7 +5,6 @@ import { CharacterCreatorScene } from './scenes/CharacterCreator';
 import { StarMapScene } from './scenes/StarMap';
 import { PlanetScene } from './scenes/Planet';
 import { HUDScene } from './scenes/HUD';
-import { SettingsScene } from './scenes/Settings';
 import { mountReactOverlay } from './react/mount';
 
 const game = new Phaser.Game({
@@ -25,7 +24,6 @@ const game = new Phaser.Game({
     StarMapScene,
     PlanetScene,
     HUDScene,
-    SettingsScene,
   ],
 });
 
