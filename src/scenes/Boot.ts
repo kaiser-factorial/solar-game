@@ -26,7 +26,12 @@ export class BootScene extends Phaser.Scene {
       }),
       minSplashMs,
     ]).then(() => {
-      this.scene.start(state.character ? 'StarMap' : 'SignIn');
+      // Always land on the "who's playing?" screen after the splash. It shows the
+      // loading board on every visit, and for a returning player it offers
+      // Continue vs. New player, so two kids can keep separate saves on one
+      // computer instead of the first one being silently locked in. SignIn
+      // itself picks the welcome-back panel vs. the sign-in form.
+      this.scene.start('SignIn');
     });
   }
 }

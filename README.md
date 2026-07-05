@@ -45,6 +45,19 @@ the save round-trip all succeed with a real session. (An earlier note here said
 whether because it was already off or got flipped along the way; either way, it
 works.)
 
+### "Who's playing?" — the boot flow now offers Continue vs. New player
+
+The loading board (Puxel `<Splash>`) now shows on **every** visit, then hands
+off to a who's-playing screen instead of silently dropping a returning guest
+straight into their save (which also quietly locked one save slot). A returning
+player sees **"Welcome back, &lt;name&gt;"** with **Continue** (keep going) and
+**New player**; a first-timer sees the usual name+PIN / guest form. **New
+player** confirms, then signs out any online session and clears the local slot
+so the next kid starts clean — and, for guests, explains that one computer holds
+only one guest game and nudges toward a name + PIN each, which is what actually
+lets two nephews keep separate progress (each name+PIN is its own cloud save).
+Covered by `scripts/welcometest.mjs`.
+
 ### The full solar system (Moon/Mars → 6 new worlds)
 
 Each new planet is a `content/planets/*.json` file (data, not code) with its own
