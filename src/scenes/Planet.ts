@@ -346,6 +346,12 @@ export class PlanetScene extends Phaser.Scene {
     this.game.events.on('ss-activate-power', this.grantPowerup, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off('ss-activate-power', this.grantPowerup, this);
+      // Phaser reuses the scene instance and does NOT clear this.events listeners
+      // on shutdown — without this, every planet re-entry stacks another
+      // 'boss-special'/'monster-special' handler, so one boss volley fires N
+      // times (N× rocks, N× damage) and eventually buries the frame rate.
+      this.events.off('boss-special');
+      this.events.off('monster-special');
     });
 
     this.rocketHint = txt(this, this.rocketX, groundTop(3) - 80, 'E — fly home', 14, '#ffe08a')
@@ -498,11 +504,14 @@ export class PlanetScene extends Phaser.Scene {
   }
 
   private scanSlashHits(slash: Phaser.Physics.Arcade.Image): void {
-    this.monsters.children.iterate((m) => {
-      const mon = m as Monster;
-      if (mon.active && this.slashOverlaps(slash, mon)) this.hitMonsterWithSlash(slash, mon);
-      return true;
-    });
+    // Snapshot the list first: a killing blow here calls mon.destroy(), which
+    // removes it from this.monsters mid-iteration. Phaser's Set.iterate caches
+    // the length, so a same-scan removal makes it read an undefined entry on the
+    // next index and throw — which kills the whole game loop (a hard freeze,
+    // music still playing). More likely mid-fight when minions crowd the player.
+    for (const mon of this.monsters.getChildren().slice() as Monster[]) {
+      if (mon?.active && this.slashOverlaps(slash, mon)) this.hitMonsterWithSlash(slash, mon);
+    }
     if (this.boss && this.slashOverlaps(slash, this.boss)) {
       this.hitBossWithSlash(slash, this.boss);
     }
@@ -662,13 +671,16 @@ export class PlanetScene extends Phaser.Scene {
       this.boss.act(time, this.player);
     }
 
-    // sweep any debris/rocks that missed the ground collider and fell out of the world
-    const sweep = (g: Phaser.Physics.Arcade.Group) =>
-      g.children.iterate((o) => {
+    // sweep any debris/rocks that missed the ground collider and fell out of the
+    // world. Snapshot first — destroying an object mid-iterate would corrupt the
+    // group's cached-length iteration and crash the game loop (same footgun as
+    // scanSlashHits); this runs every frame with constantly-falling debris.
+    const sweep = (g: Phaser.Physics.Arcade.Group) => {
+      for (const o of g.getChildren().slice()) {
         const obj = o as Phaser.GameObjects.Sprite;
         if (obj.active && obj.y > H + 100) obj.destroy();
-        return true;
-      });
+      }
+    };
     sweep(this.debris);
     sweep(this.bossRocks);
   }
