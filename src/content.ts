@@ -17,6 +17,15 @@ export interface BossDef {
   hp: number;
   damage: number;
   speed: number;
+  /** Signature move beyond the base walk/telegraph/charge pattern. Optional
+   *  so existing bosses (e.g. The Moonster) are unaffected. */
+  special?: 'rockThrow';
+}
+
+export interface DebrisDef {
+  intervalMs: number;
+  damage: number;
+  speed: number;
 }
 
 export interface PlanetDef {
@@ -31,6 +40,7 @@ export interface PlanetDef {
   };
   monsters: MonsterDef[];
   boss: BossDef;
+  hazards?: { debris?: DebrisDef };
 }
 
 export const PLANETS: Record<string, PlanetDef> = {

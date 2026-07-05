@@ -129,6 +129,35 @@ very early (v0.1.2, no license file yet) and adds ~130KB gzip to the bundle
 (react + react-dom + puxel) — fine for a family hobby project, just not a
 free lunch.
 
+### Playtest feedback round (played it live, gave 6 notes)
+
+1. **Full-health food is now a powerup, not a no-op.** Eating at max hearts
+   grants a temporary speed + attack boost (`BALANCE.powerupMs`, tinted gold,
+   sparkle celebration) instead of doing nothing — food is never wasted.
+2. **Falling debris hazard**, per-planet via `content/planets/*.json`'s new
+   `hazards.debris` (interval/damage/speed) — `src/entities/Debris.ts`.
+3. **Floating platforms for verticality.** A second terrain pass adds
+   occasional 2–4-tile platforms 3–5 tiles above the local ground —
+   deliberately layered on top of, not replacing, the base terrain, so
+   existing collectible/monster placement math is untouched.
+4. **Fixed a real bug: the boss could get stuck outside its arena.** Nothing
+   previously stopped it wandering into the bumpy overworld terrain while
+   chasing the player — and since it never jumps, a tall step could wedge it
+   in place, unable to reach the player at all (exploitable: attack it
+   through the terrain with impunity). `Boss.setArenaBounds()` now hard-clamps
+   it to the flat arena, which is guaranteed obstacle-free by construction.
+5. **The Red Baron has a signature move: a thrown rock projectile**
+   (`BossDef.special: 'rockThrow'`, mars.json only — The Moonster is
+   deliberately unchanged, as asked).
+6. **The rocket now flies to you after a shard pickup**, instead of making
+   you walk back across the whole level — `relocateRocket()`.
+
+All six verified directly (not just read): debris spawn/cleanup timing over a
+9s window, floating platforms confirmed structurally disconnected from the
+base terrain (not just varied hill height), the arena clamp tested by forcing
+the boss 500px outside its bounds, the powerup's inventory/heart math, and
+the rock-throw firing on Mars but never on Moon.
+
 ### Where things live
 
 - `content/planets/*.json` — planets are **data, not code**: palette, gravity,

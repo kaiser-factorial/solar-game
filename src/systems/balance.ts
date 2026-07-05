@@ -19,6 +19,17 @@ export const BALANCE = {
   bossTelegraphMs: 650,
   bossChargeCooldownMs: 3200,
   bossChargeSpeedMult: 3.2,
+  bossRockCooldownMs: 2800,
+  bossRockCooldownEnragedMs: 1800,
+  bossRockSpeed: 220,
+  bossRockDamage: 1,
   tile: 32,
   worldHeight: 540,
+  // Eating food at full health powers you up instead of doing nothing.
+  powerupMs: 8000,
+  powerupSpeedMult: 1.4,
+  // Floating platforms for verticality — a chance every so many columns.
+  platformChance: 0.35,
+  platformMinGapCols: 10,
+  platformMaxGapCols: 22,
 };

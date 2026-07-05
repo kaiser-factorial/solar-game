@@ -83,11 +83,15 @@ try {
     return 'no-stomp-hit';
   });
   console.log('STOMP-TEST', JSON.stringify(stomp));
-  if (
-    stomp === 'no-monster' ||
-    stomp === 'no-stomp-hit' ||
-    (stomp.after !== stomp.before - 1 && !(typeof stomp.hpAfter === 'number' && stomp.hpAfter < stomp.hpBefore))
-  ) {
+  // Success = the TARGET monster died/took damage from the stomp. The overall
+  // active-count check only catches "stomp did nothing" (after > before - 1);
+  // it tolerates after < before - 1, since unseeded monster wander (Math.random(),
+  // not the deterministic terrain RNG) occasionally drifts a second monster into
+  // the drop zone by chance — an incidental extra kill, not a broken stomp.
+  const targetDied = stomp !== 'no-monster' && stomp !== 'no-stomp-hit' && stomp.hpAfter === 'dead';
+  const targetDamaged =
+    stomp !== 'no-monster' && stomp !== 'no-stomp-hit' && typeof stomp.hpAfter === 'number' && stomp.hpAfter < stomp.hpBefore;
+  if (stomp === 'no-monster' || stomp === 'no-stomp-hit' || (!targetDied && !targetDamaged) || stomp.after > stomp.before - 1) {
     throw new Error(`Stomp regression: ${JSON.stringify(stomp)}`);
   }
 

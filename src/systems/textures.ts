@@ -145,6 +145,23 @@ export function makeCoreTextures(scene: Phaser.Scene): void {
   g.fillCircle(14, 30, 5);
   gen('rocket', 28, 62);
 
+  // debris chunk (white → tinted per planet; doubles as the boss's thrown rock)
+  g.fillStyle(0xffffff);
+  g.fillPoints(
+    [
+      { x: 9, y: 0 },
+      { x: 18, y: 4 },
+      { x: 20, y: 13 },
+      { x: 12, y: 20 },
+      { x: 3, y: 16 },
+      { x: 0, y: 7 },
+    ],
+    true
+  );
+  g.fillStyle(0x000000, 0.22);
+  g.fillTriangle(9, 0, 20, 13, 12, 20);
+  gen('debris', 20, 20);
+
   g.destroy();
 }
 

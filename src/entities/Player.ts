@@ -9,6 +9,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private nextAttackAt = 0;
   private invulnUntil = 0;
   private hitstunUntil = 0;
+  private poweredUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
     super(scene, x, y, texture);
@@ -21,9 +22,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(5);
   }
 
+  /** True while a full-health mushroom/berry powerup is active. */
+  isPowered(time: number): boolean {
+    return time < this.poweredUntil;
+  }
+
+  /** Eating food at full health grants a temporary speed + attack boost instead of doing nothing. */
+  activatePower(time: number): void {
+    this.poweredUntil = time + BALANCE.powerupMs;
+    this.setTint(0xffe066);
+  }
+
   /** Returns true when this frame starts an attack swing. */
   applyIntent(intent: InputIntent, time: number): boolean {
     const body = this.body as Phaser.Physics.Arcade.Body;
+    if (this.poweredUntil > 0 && time >= this.poweredUntil) {
+      this.poweredUntil = 0;
+      this.clearTint();
+    }
     if (intent.moveX !== 0) {
       this.facing = intent.moveX > 0 ? 1 : -1;
       this.setFlipX(this.facing < 0);
@@ -31,7 +47,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Skip the movement override during hitstun — otherwise this line stomps
     // the knockback velocity hurt() just set, on the very next frame.
     if (time >= this.hitstunUntil) {
-      body.setVelocityX(intent.moveX * BALANCE.playerSpeed);
+      const speedMult = this.isPowered(time) ? BALANCE.powerupSpeedMult : 1;
+      body.setVelocityX(intent.moveX * BALANCE.playerSpeed * speedMult);
     }
     if (intent.jump && body.blocked.down) {
       // Same jump height on every planet; gravity shapes the arc.

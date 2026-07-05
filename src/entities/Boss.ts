@@ -15,6 +15,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private chargeDir = 1;
   private enraged = false;
   private auraColor = 0xffffff;
+  private arenaMinX = -Infinity;
+  private arenaMaxX = Infinity;
+  private nextSpecialAt = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private glow: any = null;
 
@@ -58,10 +61,21 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
+  /**
+   * Confines the boss to its (flat, obstacle-free) arena so it can never
+   * wander into the bumpy overworld terrain and get physically wedged
+   * against a step it has no way to climb (it never jumps).
+   */
+  setArenaBounds(minX: number, maxX: number): void {
+    this.arenaMinX = minX;
+    this.arenaMaxX = maxX;
+  }
+
   wake(time: number): void {
     if (this.awake) return;
     this.awake = true;
     this.modeUntil = time + 1800;
+    this.nextSpecialAt = time + BALANCE.bossRockCooldownMs;
     // dramatic entrance — non-physics flourishes only
     this.shockwave(this.auraColor, 7);
     this.scene.cameras.main.shake(250, 0.008);
@@ -121,11 +135,32 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         }
         break;
     }
+
+    // Hard clamp, on top of the per-mode logic above: never let physics
+    // substeps or a fast charge carry the boss past its arena.
+    if (this.x < this.arenaMinX) {
+      this.x = this.arenaMinX;
+      if (body.velocity.x < 0) body.setVelocityX(0);
+    } else if (this.x > this.arenaMaxX) {
+      this.x = this.arenaMaxX;
+      if (body.velocity.x > 0) {
+        body.setVelocityX(0);
+        if (this.mode === 'charge') {
+          this.mode = 'walk';
+          this.modeUntil = time + BALANCE.bossChargeCooldownMs * (phase2 ? 0.6 : 1);
+        }
+      }
+    }
+
+    if (this.def.special === 'rockThrow' && this.mode === 'walk' && time > this.nextSpecialAt) {
+      this.nextSpecialAt = time + (phase2 ? BALANCE.bossRockCooldownEnragedMs : BALANCE.bossRockCooldownMs);
+      this.scene.events.emit('boss-special', { type: 'rockThrow', x: this.x, y: this.y - 20 });
+    }
   }
 
   /** Returns true when the boss dies. */
-  hit(fromX: number): boolean {
-    this.hp -= 1;
+  hit(fromX: number, damage = 1): boolean {
+    this.hp -= damage;
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.velocity.x += this.x < fromX ? -60 : 60;
     this.scene.tweens.add({ targets: this, alpha: 0.4, yoyo: true, duration: 50, repeat: 1 });

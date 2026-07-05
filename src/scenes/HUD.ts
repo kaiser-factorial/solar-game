@@ -103,7 +103,8 @@ export class HUDScene extends Phaser.Scene {
       if (info.kind === 'food') {
         const eat = txt(this, 650, y, '[eat]', 15, '#8aff9e').setOrigin(1, 0.5);
         eat.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-          state.eatFood({ [id]: info.heals ?? 1 });
+          const result = state.eatFood({ [id]: info.heals ?? 1 });
+          if (result?.kind === 'powerup') this.game.events.emit('ss-activate-power');
         });
         c.add(eat);
       }

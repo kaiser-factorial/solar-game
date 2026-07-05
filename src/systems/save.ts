@@ -139,19 +139,21 @@ class GameState {
     this.touch();
   }
 
-  /** Eat one unit of any food in the bag. Returns the food id eaten, or null. */
-  eatFood(foods: Record<string, number>): string | null {
-    if (this.save.hearts.current >= this.save.hearts.max) return null;
+  /**
+   * Eat one unit of any food in the bag. At full health there's nothing to
+   * heal, so it grants a temporary powerup instead — food is never wasted.
+   */
+  eatFood(foods: Record<string, number>): { kind: 'healed' | 'powerup'; id: string } | null {
     for (const [id, heals] of Object.entries(foods)) {
-      if ((this.save.inventory[id] ?? 0) > 0) {
-        this.save.inventory[id] -= 1;
-        this.save.hearts.current = Math.min(
-          this.save.hearts.max,
-          this.save.hearts.current + heals
-        );
+      if ((this.save.inventory[id] ?? 0) <= 0) continue;
+      this.save.inventory[id] -= 1;
+      if (this.save.hearts.current < this.save.hearts.max) {
+        this.save.hearts.current = Math.min(this.save.hearts.max, this.save.hearts.current + heals);
         this.touch();
-        return id;
+        return { kind: 'healed', id };
       }
+      this.touch();
+      return { kind: 'powerup', id };
     }
     return null;
   }

@@ -9,6 +9,7 @@ import type { ControlScheme, InputIntent } from '../input/types';
 import { Player } from '../entities/Player';
 import { Monster } from '../entities/Monster';
 import { Boss } from '../entities/Boss';
+import { Debris } from '../entities/Debris';
 import { txt, sprinkleStars, toast } from '../systems/ui';
 import { audio, type TrackName } from '../systems/audio';
 
@@ -26,10 +27,13 @@ export class PlanetScene extends Phaser.Scene {
   private boss: Boss | null = null;
   private controls!: ControlScheme;
   private rocketX = 0;
+  private rocketSprite!: Phaser.GameObjects.Image;
   private spawnPoint = { x: 0, y: 0 };
   private arenaX = 0;
   private rocketHint!: Phaser.GameObjects.Text;
   private pickupsSinceFlush = 0;
+  private debris!: Phaser.Physics.Arcade.Group;
+  private bossRocks!: Phaser.Physics.Arcade.Group;
   private contactSafeUntil = new WeakMap<Phaser.GameObjects.GameObject, number>();
   private swordHitSafeUntil = new WeakMap<Phaser.GameObjects.GameObject, number>();
   private accentColor = 0xffffff;
@@ -80,9 +84,28 @@ export class PlanetScene extends Phaser.Scene {
     }
     const groundTop = (col: number) => H - this.heights[col] * TILE;
 
+    // --- floating platforms (verticality — separate from base ground, so
+    //     existing collectible/monster placement math is untouched) ---
+    for (let i = 10; i < cols - 30; ) {
+      if (rng() < BALANCE.platformChance) {
+        const width = 2 + Math.floor(rng() * 3);
+        const stepsAbove = 3 + Math.floor(rng() * 3);
+        let highestTop = H;
+        for (let c = i; c < i + width && c < cols; c++) highestTop = Math.min(highestTop, groundTop(c));
+        const platformY = highestTop - stepsAbove * TILE;
+        for (let c = i; c < i + width && c < cols; c++) {
+          const img = this.ground.create(c * TILE + TILE / 2, platformY, 'tile') as Phaser.Physics.Arcade.Image;
+          img.setDisplaySize(TILE, TILE).setTint(groundCol).refreshBody();
+        }
+        i += width + BALANCE.platformMinGapCols + Math.floor(rng() * (BALANCE.platformMaxGapCols - BALANCE.platformMinGapCols));
+      } else {
+        i += 4;
+      }
+    }
+
     // --- landing site ---
     this.rocketX = 3 * TILE + TILE / 2;
-    this.add.image(this.rocketX, groundTop(3) - 31, 'rocket').setDepth(3);
+    this.rocketSprite = this.add.image(this.rocketX, groundTop(3) - 31, 'rocket').setDepth(3);
     this.spawnPoint = { x: this.rocketX + 40, y: groundTop(3) - 60 };
 
     // --- player + controls ---
@@ -134,13 +157,74 @@ export class PlanetScene extends Phaser.Scene {
     if (!state.save.planets[this.planetId]?.bossDefeated) {
       this.boss = new Boss(this, (cols - 8) * TILE, groundTop(cols - 8) - 70, def.boss, accent);
       this.boss.setCollideWorldBounds(true);
+      // Confine to the flat arena — it never jumps, so if it wandered into
+      // the bumpy overworld terrain it could get physically wedged against
+      // a step and never reach the player again.
+      this.boss.setArenaBounds(this.arenaX, (cols - 3) * TILE);
     }
+
+    // --- hazards: falling debris (data-driven per planet) ---
+    this.debris = this.physics.add.group();
+    if (def.hazards?.debris) {
+      const hz = def.hazards.debris;
+      this.time.addEvent({
+        delay: hz.intervalMs,
+        loop: true,
+        callback: () => {
+          const cam = this.cameras.main;
+          const x = cam.worldView.x + Math.random() * cam.worldView.width;
+          this.debris.add(new Debris(this, x, -20, hz.speed, hz.damage, accent));
+        },
+      });
+    }
+    this.bossRocks = this.physics.add.group();
+    this.events.on('boss-special', (payload: { type: string; x: number; y: number }) => {
+      if (payload.type !== 'rockThrow' || !this.player) return;
+      const dx = this.player.x - payload.x;
+      const dy = this.player.y - payload.y;
+      const dist = Math.max(1, Math.hypot(dx, dy));
+      const rock = this.physics.add
+        .image(payload.x, payload.y, 'debris')
+        .setTint(accent)
+        .setDepth(6);
+      (rock.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
+      (rock.body as Phaser.Physics.Arcade.Body).setVelocity(
+        (dx / dist) * BALANCE.bossRockSpeed,
+        (dy / dist) * BALANCE.bossRockSpeed - 160 // a little arc, not a flat laser
+      );
+      this.tweens.add({ targets: rock, angle: 360, duration: 500, repeat: -1 });
+      this.bossRocks.add(rock);
+    });
 
     // --- physics wiring ---
     this.slashes = this.physics.add.group({ allowGravity: false });
     this.physics.add.collider(this.player, this.ground);
     this.physics.add.collider(this.monsters, this.ground);
     if (this.boss) this.physics.add.collider(this.boss, this.ground);
+    this.physics.add.collider(this.debris, this.ground, (d) => {
+      const deb = this.arcadeObject<Debris>(d);
+      this.poof(deb.x, deb.y, accent);
+      deb.destroy();
+    });
+    this.physics.add.overlap(this.player, this.debris, (_p, d) => {
+      const deb = this.arcadeObject<Debris>(d);
+      if (!deb.active) return;
+      this.hurtPlayer(deb.damage, deb.x);
+      this.poof(deb.x, deb.y, accent);
+      deb.destroy();
+    });
+    this.physics.add.overlap(this.player, this.bossRocks, (_p, r) => {
+      const rock = this.arcadeObject<Phaser.Physics.Arcade.Image>(r);
+      if (!rock.active) return;
+      this.hurtPlayer(BALANCE.bossRockDamage, rock.x);
+      this.poof(rock.x, rock.y, accent);
+      rock.destroy();
+    });
+    this.physics.add.collider(this.bossRocks, this.ground, (r) => {
+      const rock = this.arcadeObject<Phaser.Physics.Arcade.Image>(r);
+      this.poof(rock.x, rock.y, accent);
+      rock.destroy();
+    });
 
     this.physics.add.overlap(this.player, pickups, (_p, item) => {
       const it = item as Phaser.Physics.Arcade.Image;
@@ -189,17 +273,25 @@ export class PlanetScene extends Phaser.Scene {
 
     // --- extra keys (UI-level, not gameplay movement) ---
     this.input.keyboard!.on('keydown-F', () => {
-      const ate = state.eatFood(FOOD_HEALS);
-      if (ate) {
+      const result = state.eatFood(FOOD_HEALS);
+      if (result?.kind === 'healed') {
         audio.sfx('eat');
         this.floaty(this.player.x, this.player.y - 40, '+1 ♥ yum!', '#8aff9e');
+      } else if (result?.kind === 'powerup') {
+        this.grantPowerup();
       } else {
         audio.sfx('denied');
-        toast(this, state.save.hearts.current >= state.save.hearts.max ? 'Hearts already full!' : 'No food in your bag yet!');
+        toast(this, 'No food in your bag yet!');
       }
     });
     this.input.keyboard!.on('keydown-M', () => {
       toast(this, audio.toggle() ? 'Sound ON' : 'Sound OFF');
+    });
+    // Eating from the HUD bag panel (a different scene) at full health
+    // routes here the same way, so the buff always lands on the real player.
+    this.game.events.on('ss-activate-power', this.grantPowerup, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off('ss-activate-power', this.grantPowerup, this);
     });
 
     this.rocketHint = txt(this, this.rocketX, groundTop(3) - 80, 'E — fly home', 14, '#ffe08a')
@@ -224,6 +316,15 @@ export class PlanetScene extends Phaser.Scene {
       this.pickupsSinceFlush = 0;
       state.flush();
     }
+  }
+
+  /** Eating food at full health powers you up instead of being wasted. */
+  private grantPowerup(): void {
+    this.player.activatePower(this.time.now);
+    audio.sfx('eat');
+    this.game.events.emit('ss-celebrate', { variant: 'sparkles', tone: 'success' });
+    this.floaty(this.player.x, this.player.y - 40, 'POWERED UP!', '#ffe066');
+    toast(this, 'Speed & attack boosted for a bit!');
   }
 
   private hurtPlayer(damage: number, fromX: number): void {
@@ -285,7 +386,8 @@ export class PlanetScene extends Phaser.Scene {
     hits.add(mon);
     if (!this.canTakeSwordHit(mon)) return;
     this.protectPlayerFrom(mon);
-    if (mon.hit(this.player.x)) {
+    const damage = this.player.isPowered(this.time.now) ? 2 : 1;
+    if (mon.hit(this.player.x, damage)) {
       this.poof(mon.x, mon.y, this.accentColor);
       mon.destroy();
     }
@@ -297,7 +399,8 @@ export class PlanetScene extends Phaser.Scene {
     hits.add(boss);
     if (!this.canTakeSwordHit(boss)) return;
     this.protectPlayerFrom(boss);
-    const defeated = boss.hit(this.player.x);
+    const damage = this.player.isPowered(this.time.now) ? 2 : 1;
+    const defeated = boss.hit(this.player.x, damage);
     this.game.events.emit('ss-boss', { name: this.def.boss.name, hp: Math.max(0, boss.hp), max: boss.maxHp });
     if (defeated) this.bossDefeated();
   }
@@ -379,13 +482,26 @@ export class PlanetScene extends Phaser.Scene {
     this.physics.add.collider(orb, this.ground);
     this.tweens.add({ targets: orb, scale: 1.4, yoyo: true, repeat: -1, duration: 500 });
     this.physics.add.overlap(this.player, orb, () => {
+      const orbX = orb.x;
       orb.destroy();
       state.addOrb(this.planetId);
       audio.sfx('orb');
       this.game.events.emit('ss-celebrate', { variant: 'confetti', tone: 'success' });
       this.banner(`${this.def.name.toUpperCase()} SHARD GET!  +1 ♥`, ORB_COLORS[this.planetId]);
-      toast(this, 'Press E at your rocket to fly home!');
+      this.relocateRocket(orbX);
+      toast(this, 'Your ride is here — press E to fly home!');
     });
+  }
+
+  /** No more trekking back across the whole level — the rocket comes to you. */
+  private relocateRocket(x: number): void {
+    const col = Phaser.Math.Clamp(Math.round(x / TILE), 0, this.heights.length - 1);
+    const groundY = H - this.heights[col] * TILE;
+    this.rocketX = x;
+    this.rocketSprite.setPosition(x, groundY - 31).setAlpha(0).setScale(0.4);
+    this.tweens.add({ targets: this.rocketSprite, alpha: 1, scale: 1, duration: 500, ease: 'Back.out' });
+    this.rocketHint.setPosition(x, groundY - 80);
+    this.poof(x, groundY - 20, this.accentColor);
   }
 
   private poof(x: number, y: number, tint: number): void {
@@ -451,5 +567,15 @@ export class PlanetScene extends Phaser.Scene {
       }
       this.boss.act(time, this.player);
     }
+
+    // sweep any debris/rocks that missed the ground collider and fell out of the world
+    const sweep = (g: Phaser.Physics.Arcade.Group) =>
+      g.children.iterate((o) => {
+        const obj = o as Phaser.GameObjects.Sprite;
+        if (obj.active && obj.y > H + 100) obj.destroy();
+        return true;
+      });
+    sweep(this.debris);
+    sweep(this.bossRocks);
   }
 }
