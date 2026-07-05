@@ -18,7 +18,7 @@ export type SfxName =
   | 'boss'
   | 'denied';
 
-export type TrackName = 'moon' | 'mars' | 'earth' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'venus' | 'mercury' | 'map';
+export type TrackName = 'moon' | 'mars' | 'earth' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'venus' | 'mercury' | 'map' | 'boss-rumble' | 'boss-tempest' | 'boss-frost' | 'boss-solar';
 
 type Note = [beat: number, midi: number, lenBeats: number];
 interface VoiceDef {
@@ -412,6 +412,151 @@ const MAP: TrackDef = {
   ],
 };
 
+/* ---------- boss battles ---------- */
+
+// BOSS RUMBLE — heavy pounding C-minor for a rocky/volcanic boss. 124bpm,
+// low driving root-fifth bass, menacing low lead, hard 16th hat.
+const rumbleBass: Note[] = [];
+[24, 24, 27, 22].forEach((root, bar) => {
+  for (let i = 0; i < 8; i++) {
+    // pound the root on the beat, jab the fifth on the off-beat "and"s
+    rumbleBass.push([bar * 4 + i * 0.5, i % 2 === 1 ? root + 7 : root, 0.4]);
+  }
+});
+const BOSS_RUMBLE: TrackDef = {
+  bpm: 124,
+  beats: 16,
+  voices: [
+    { type: 'sawtooth', vol: 0.12, notes: rumbleBass },
+    {
+      type: 'square',
+      vol: 0.13, // menacing minor lead, mostly stepwise around the C-minor triad
+      notes: [
+        [0, 60, 1], [1, 63, 0.5], [1.5, 60, 0.5], [2, 58, 1.5],
+        [4, 60, 1], [5, 65, 0.5], [5.5, 63, 0.5], [6, 60, 1.5],
+        [8, 63, 0.75], [9, 60, 0.75], [10, 58, 1], [11, 55, 1],
+        [12, 56, 0.75], [13, 60, 0.75], [14, 58, 2],
+      ],
+    },
+    {
+      type: 'triangle',
+      vol: 0.07, // rock-shatter high stabs answering each phrase
+      notes: [[3.5, 84, 0.25], [7.5, 87, 0.25], [11.5, 82, 0.25], [15, 79, 0.3], [15.5, 84, 0.3]],
+    },
+  ],
+  hat: Array.from({ length: 16 }, (_, i) => i),
+};
+
+// BOSS TEMPEST — the most relentless: fast, chaotic B-minor gas-giant/ocean
+// boss. 142bpm, busy 16th-note bass, frantic lead, near-full hat.
+const tempestBass: Note[] = [];
+[35, 33, 30, 31].forEach((root, bar) => {
+  for (let i = 0; i < 16; i++) {
+    // driving 16ths that leap to the octave on the last hit of every group of 4
+    const m = i % 4 === 3 ? root + 12 : i % 4 === 2 ? root + 7 : root;
+    tempestBass.push([bar * 4 + i * 0.25, m, 0.22]);
+  }
+});
+const BOSS_TEMPEST: TrackDef = {
+  bpm: 142,
+  beats: 16,
+  voices: [
+    { type: 'square', vol: 0.1, notes: tempestBass },
+    {
+      type: 'sawtooth',
+      vol: 0.12, // frantic tumbling lead
+      notes: [
+        [0, 71, 0.4], [0.5, 74, 0.4], [1, 78, 0.5], [1.75, 74, 0.4], [2.5, 71, 0.5], [3.25, 69, 0.75],
+        [4, 69, 0.4], [4.5, 72, 0.4], [5, 76, 0.5], [5.75, 72, 0.4], [6.5, 69, 0.5], [7.25, 67, 0.75],
+        [8, 66, 0.4], [8.5, 69, 0.4], [9, 73, 0.5], [9.75, 69, 0.4], [10.5, 66, 0.5], [11.25, 64, 0.75],
+        [12, 67, 0.4], [12.5, 71, 0.4], [13, 74, 0.5], [13.75, 78, 0.4], [14.5, 74, 0.5], [15.25, 71, 0.75],
+      ],
+    },
+    {
+      type: 'triangle',
+      vol: 0.06, // storm-spray sparkle, off the beat
+      notes: [
+        [1.5, 90, 0.2], [3.5, 93, 0.2], [5.5, 88, 0.2], [7.5, 86, 0.2],
+        [9.5, 90, 0.2], [11.5, 85, 0.2], [13.5, 93, 0.2], [15.5, 90, 0.25],
+      ],
+    },
+  ],
+  hat: Array.from({ length: 32 }, (_, i) => i * 0.5),
+};
+
+// BOSS FROST — cold, tense, crystalline D#-minor ice boss. 122bpm, sharp
+// staccato bass, glassy high lead with dissonant tritone/minor-2nd edges,
+// sparse-but-precise hat.
+const frostBass: Note[] = [];
+[27, 27, 25, 30].forEach((root, bar) => {
+  // short icy stabs: down-beat, the "and" of 2, and beat 4
+  [0, 1.5, 3].forEach((off) => frostBass.push([bar * 4 + off, root, 0.22]));
+  frostBass.push([bar * 4 + 3.5, root + 6, 0.22]); // dissonant tritone jab
+});
+const BOSS_FROST: TrackDef = {
+  bpm: 122,
+  beats: 16,
+  voices: [
+    { type: 'square', vol: 0.11, notes: frostBass },
+    {
+      type: 'triangle',
+      vol: 0.14, // glassy high lead; b5 and b2 leaning-tones give it a cold bite
+      notes: [
+        [0, 87, 0.75], [1, 90, 0.5], [2, 88, 0.5], [2.5, 93, 1],
+        [4, 86, 0.75], [5, 89, 0.5], [6, 92, 1.5],
+        [8, 87, 0.5], [8.5, 88, 0.5], [9, 93, 1], [10.5, 90, 1.25],
+        [12, 85, 0.75], [13, 91, 0.5], [14, 96, 0.5], [14.5, 93, 1.25],
+      ],
+    },
+    {
+      type: 'sawtooth',
+      vol: 0.06, // low dissonant crystal drone, one per bar
+      notes: [[0, 51, 1.8], [4, 49, 1.8], [8, 51, 1.8], [12, 54, 2.5]],
+    },
+  ],
+  hat: [0, 1.5, 3, 3.5, 8, 9.5, 11, 11.5],
+};
+
+// BOSS SOLAR — blazing, triumphant-but-dangerous solar/metallic boss. 130bpm,
+// bright brassy A-major lead over a churning bass, shimmering high arpeggios,
+// driving hat.
+const solarBass: Note[] = [];
+[33, 33, 28, 30].forEach((root, bar) => {
+  for (let i = 0; i < 8; i++) {
+    // churning bass, walking up to the fifth mid-bar then back
+    const m = i === 4 ? root + 7 : i === 6 ? root + 5 : root;
+    solarBass.push([bar * 4 + i * 0.5, m, 0.4]);
+  }
+});
+const BOSS_SOLAR: TrackDef = {
+  bpm: 130,
+  beats: 16,
+  voices: [
+    { type: 'sawtooth', vol: 0.11, notes: solarBass },
+    {
+      type: 'square',
+      vol: 0.13, // bright brassy fanfare lead over A major
+      notes: [
+        [0, 69, 1], [1, 73, 0.5], [1.5, 76, 0.5], [2, 81, 1.5],
+        [4, 76, 1], [5, 73, 0.5], [5.5, 69, 0.5], [6, 71, 1.5],
+        [8, 69, 0.75], [9, 76, 0.75], [10, 80, 1], [11, 81, 1],
+        [12, 78, 0.5], [12.5, 74, 0.5], [13, 76, 1], [14, 81, 2],
+      ],
+    },
+    {
+      type: 'triangle',
+      vol: 0.07, // shimmering high A-major arpeggio sparkle
+      notes: [
+        [0.5, 93, 0.2], [1, 97, 0.2], [1.5, 100, 0.2],
+        [4.5, 93, 0.2], [5, 97, 0.2], [5.5, 100, 0.2],
+        [8.5, 93, 0.2], [9, 97, 0.2], [9.5, 100, 0.2],
+        [12.5, 97, 0.2], [13, 100, 0.2], [13.5, 105, 0.3],
+      ],
+    },
+  ],
+  hat: Array.from({ length: 16 }, (_, i) => i),
+};
+
 const TRACKS: Record<TrackName, TrackDef> = {
   moon: MOON,
   mars: MARS,
@@ -424,6 +569,10 @@ const TRACKS: Record<TrackName, TrackDef> = {
   venus: VENUS,
   mercury: MERCURY,
   map: MAP,
+  'boss-rumble': BOSS_RUMBLE,
+  'boss-tempest': BOSS_TEMPEST,
+  'boss-frost': BOSS_FROST,
+  'boss-solar': BOSS_SOLAR,
 };
 
 /* ---------- engine ---------- */

@@ -17,6 +17,21 @@ import { audio, type TrackName } from '../systems/audio';
 const TILE = BALANCE.tile;
 const H = BALANCE.worldHeight;
 
+// Each world's boss fight swaps the exploration theme for a battle track the
+// moment you reach the boss. Four battle themes, grouped by boss character.
+const BOSS_TRACK: Record<string, TrackName> = {
+  moon: 'boss-rumble',
+  mars: 'boss-rumble',
+  venus: 'boss-rumble',
+  earth: 'boss-tempest',
+  jupiter: 'boss-tempest',
+  saturn: 'boss-tempest',
+  neptune: 'boss-tempest',
+  uranus: 'boss-frost',
+  pluto: 'boss-frost',
+  mercury: 'boss-solar',
+};
+
 export class PlanetScene extends Phaser.Scene {
   private planetId!: string;
   private def!: PlanetDef;
@@ -31,6 +46,8 @@ export class PlanetScene extends Phaser.Scene {
   private rocketSprite!: Phaser.GameObjects.Image;
   private spawnPoint = { x: 0, y: 0 };
   private arenaX = 0;
+  private arenaWall?: Phaser.GameObjects.Rectangle;
+  private arenaSpawn = { x: 0, y: 0 };
   private rocketHint!: Phaser.GameObjects.Text;
   private pickupsSinceFlush = 0;
   private treasureComplete = false;
@@ -509,11 +526,41 @@ export class PlanetScene extends Phaser.Scene {
     if (result === 'dead') {
       audio.sfx('die');
       this.cameras.main.flash(300, 255, 60, 60);
-      this.banner('OUCH! back to the rocket...', 0xff6666);
-      this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+      // While the arena is sealed for a boss fight, respawn INSIDE it — sending
+      // the player back to the far landing pad would strand them on the wrong
+      // side of the wall and soft-lock the fight.
+      const respawn = this.arenaWall ? this.arenaSpawn : this.spawnPoint;
+      this.banner(this.arenaWall ? 'OUCH! try again!' : 'OUCH! back to the rocket...', 0xff6666);
+      this.player.setPosition(respawn.x, respawn.y);
       this.player.setVelocity(0, 0);
       state.healFull(); // kid-friendly: keep everything, try again
     }
+  }
+
+  /**
+   * Drop a shimmering energy barrier at the arena mouth so there's no fleeing
+   * once the boss wakes — a real wall the player collides with. Removed on
+   * victory (openArena). Some levels already fence the arena with a big
+   * dropoff; this makes every boss commit-to-the-fight, per playtest feedback.
+   */
+  private sealArena(): void {
+    if (this.arenaWall) return;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    const wallX = Math.min(this.arenaX, body.left - 20); // just behind the player
+    const wall = this.add.rectangle(wallX, H / 2, 12, H, this.accentColor, 0.16).setDepth(2);
+    wall.setStrokeStyle(2, this.accentColor, 0.6);
+    this.physics.add.existing(wall, true); // static solid body
+    this.physics.add.collider(this.player, wall);
+    this.tweens.add({ targets: wall, alpha: 0.34, yoyo: true, repeat: -1, duration: 650 });
+    this.arenaWall = wall;
+    // A safe re-entry point on the flat arena floor for mid-fight deaths.
+    const arenaCol = Math.min(this.heights.length - 1, Math.floor(this.arenaX / TILE) + 4);
+    this.arenaSpawn = { x: this.arenaX + 70, y: H - this.heights[arenaCol] * TILE - 60 };
+  }
+
+  private openArena(): void {
+    this.arenaWall?.destroy();
+    this.arenaWall = undefined;
   }
 
   private protectPlayerFrom(enemy: Phaser.GameObjects.GameObject): void {
@@ -671,6 +718,8 @@ export class PlanetScene extends Phaser.Scene {
     const boss = this.boss;
     this.boss = null;
     this.game.events.emit('ss-boss', null);
+    this.openArena(); // fight's over — drop the barrier, restore the calm theme
+    audio.music(this.planetId as TrackName);
     const body = boss.body as Phaser.Physics.Arcade.Body | null;
     body?.stop();
     body?.setEnable(false);
@@ -776,8 +825,10 @@ export class PlanetScene extends Phaser.Scene {
       if (!this.boss.awake && this.player.x > this.arenaX) {
         this.boss.wake(time);
         audio.sfx('boss');
+        audio.music(BOSS_TRACK[this.planetId] ?? 'boss-rumble'); // battle music kicks in
         this.game.events.emit('ss-boss', { name: this.def.boss.name, hp: this.boss.hp, max: this.boss.maxHp });
         this.banner(`${this.def.boss.name}!!`, 0xff6666);
+        this.sealArena();
       }
       this.boss.act(time, this.player);
     }
