@@ -93,6 +93,8 @@ export interface PlanetDef {
   collectibles: {
     treasure: { id: string; name: string; count: number };
     food: { id: string; name: string; heals: number; count: number };
+    /** A one-time findable weapon pickup (e.g. the spaceblaster on Jupiter). */
+    weapon?: { id: string; name: string };
   };
   monsters: MonsterDef[];
   boss: BossDef;

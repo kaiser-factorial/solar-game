@@ -39,6 +39,8 @@ export class PlanetScene extends Phaser.Scene {
   private ground!: Phaser.Physics.Arcade.StaticGroup;
   private monsters!: Phaser.Physics.Arcade.Group;
   private slashes!: Phaser.Physics.Arcade.Group;
+  private bolts!: Phaser.Physics.Arcade.Group;
+  private nextBlasterAt = 0;
   private player!: Player;
   private boss: Boss | null = null;
   private controls!: ControlScheme;
@@ -191,6 +193,32 @@ export class PlanetScene extends Phaser.Scene {
       : 'food';
     scatter(foodTex, null, def.collectibles.food.id, 'food', def.collectibles.food.count);
 
+    // One-time findable weapon (the spaceblaster on Jupiter). Only placed while
+    // unowned; a seeded mid-column spot in the first half of the level keeps it
+    // reachable early and identical on every visit. Full-color 'blaster' art: no tint.
+    if (def.collectibles.weapon && !state.hasBlaster()) {
+      const weapon = def.collectibles.weapon;
+      const wcol = Phaser.Math.Clamp(
+        8 + Math.floor(rng() * Math.max(1, Math.floor(cols * 0.35))),
+        8,
+        cols - 8
+      );
+      const gun = pickups.create(
+        wcol * TILE + TILE / 2,
+        groundTop(wcol) - 46,
+        'blaster'
+      ) as Phaser.Physics.Arcade.Image;
+      gun.setData({ itemId: weapon.id, kind: 'weapon' });
+      this.tweens.add({
+        targets: gun,
+        y: gun.y - 6,
+        yoyo: true,
+        repeat: -1,
+        duration: 760,
+        ease: 'Sine.inOut',
+      });
+    }
+
     // --- monsters (seeded spawn, lively movement) ---
     this.monsters = this.physics.add.group();
     for (const mdef of def.monsters) {
@@ -326,6 +354,8 @@ export class PlanetScene extends Phaser.Scene {
 
     // --- physics wiring ---
     this.slashes = this.physics.add.group({ allowGravity: false });
+    // Blaster bolts — no gravity so they fly dead straight at their authored speed.
+    this.bolts = this.physics.add.group({ allowGravity: false });
     this.physics.add.collider(this.player, this.ground);
     this.physics.add.collider(this.monsters, this.ground);
     if (this.boss) this.physics.add.collider(this.boss, this.ground);
@@ -378,6 +408,35 @@ export class PlanetScene extends Phaser.Scene {
         this.hitBossWithSlash(slash, boss);
       });
     }
+    // Blaster bolt overlaps — reuse the melee damage helpers so powered damage,
+    // boss HP events and defeat all work identically. A bolt is one-shot: it
+    // applies its hit then destroys itself. Arcade collects overlap pairs before
+    // invoking callbacks, so destroying the monster/bolt here is safe (same as
+    // the slash overlaps above) — no manual group iteration is done.
+    this.physics.add.overlap(this.bolts, this.monsters, (bo, m) => {
+      const bolt = this.arcadeObject<Phaser.Physics.Arcade.Image>(bo);
+      const mon = this.arcadeObject<Monster>(m);
+      if (!bolt.active || !mon.active) return;
+      this.hitMonsterWithSlash(bolt, mon);
+      bolt.destroy();
+    });
+    if (this.boss) {
+      this.physics.add.overlap(this.bolts, this.boss, (bo, b) => {
+        void b;
+        const bolt = this.arcadeObject<Phaser.Physics.Arcade.Image>(bo);
+        const boss = this.boss;
+        if (!bolt.active || !boss || !boss.active) return;
+        this.hitBossWithSlash(bolt, boss);
+        bolt.destroy();
+      });
+    }
+    // Bolts die on terrain (simplest + reads well): a quick spark, then gone.
+    this.physics.add.collider(this.bolts, this.ground, (bo) => {
+      const bolt = this.arcadeObject<Phaser.Physics.Arcade.Image>(bo);
+      if (!bolt.active) return;
+      this.poof(bolt.x, bolt.y, this.accentColor);
+      bolt.destroy();
+    });
     this.physics.add.overlap(this.player, this.monsters, (_p, m) => {
       const mon = this.arcadeObject<Monster>(m);
       // Falling onto a lil guy from above = a Mario-style stomp.
@@ -418,6 +477,9 @@ export class PlanetScene extends Phaser.Scene {
         toast(this, 'No food in your bag yet!');
       }
     });
+    this.input.keyboard!.on('keydown-B', () => {
+      this.fireBlaster();
+    });
     this.input.keyboard!.on('keydown-M', () => {
       toast(this, audio.toggle() ? 'Sound ON' : 'Sound OFF');
     });
@@ -447,6 +509,14 @@ export class PlanetScene extends Phaser.Scene {
   private collect(itemId: string, kind: string, x: number, y: number): void {
     state.addItem(itemId);
     audio.sfx('pickup');
+    if (kind === 'weapon') {
+      // A findable weapon — big celebratory moment + how-to-fire toast.
+      state.flush();
+      this.game.events.emit('ss-celebrate', { variant: 'sparkles', tone: 'success' });
+      this.banner('SPACEBLASTER GET!', this.accentColor);
+      toast(this, 'Press B to blast monsters from afar!');
+      return;
+    }
     if (kind === 'treasure') {
       const p = state.planet(this.planetId);
       const goal = this.def.collectibles.treasure.count;
@@ -713,6 +783,40 @@ export class PlanetScene extends Phaser.Scene {
     this.time.delayedCall(BALANCE.attackDurationMs, () => slash.destroy());
   }
 
+  /**
+   * Fire a horizontal energy bolt from the spaceblaster. Requires ownership;
+   * enforces a cooldown so a held key can't spray bolts. The bolt reuses the
+   * melee hit helpers on overlap (see the this.bolts wiring), so it applies the
+   * same powered damage and drives boss HP/defeat.
+   */
+  private fireBlaster(): void {
+    if (!state.hasBlaster()) {
+      audio.sfx('denied');
+      return;
+    }
+    if (this.time.now < this.nextBlasterAt) return;
+    this.nextBlasterAt = this.time.now + BALANCE.blasterCooldownMs;
+
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    const dir = this.player.facing;
+    const bolt = this.bolts.create(
+      body.center.x + dir * 20,
+      body.center.y,
+      'bolt'
+    ) as Phaser.Physics.Arcade.Image;
+    (bolt as Phaser.Physics.Arcade.Image & { __hits: Set<Phaser.GameObjects.GameObject> }).__hits = new Set();
+    bolt.setDepth(6);
+    bolt.setFlipX(dir < 0);
+    (bolt.body as Phaser.Physics.Arcade.Body).setVelocityX(dir * BALANCE.blasterBoltSpeed);
+    (bolt.body as Phaser.Physics.Arcade.Body).setSize(16, 10);
+    audio.sfx('attack');
+    // Safety net so a bolt that somehow never hits terrain or the world edge
+    // still can't leak (the per-frame off-world sweep covers the rest).
+    this.time.delayedCall(2500, () => {
+      if (bolt.active) bolt.destroy();
+    });
+  }
+
   private bossDefeated(): void {
     if (!this.boss) return;
     const boss = this.boss;
@@ -848,5 +952,6 @@ export class PlanetScene extends Phaser.Scene {
     };
     sweep(this.debris);
     sweep(this.bossRocks);
+    sweep(this.bolts);
   }
 }

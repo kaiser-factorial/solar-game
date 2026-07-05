@@ -33,6 +33,9 @@ export const BALANCE = {
   bossMinionCooldownMs: 9000,
   // Speed of a flame dropped straight down by a flame-dropper robot.
   flameDropSpeed: 190,
+  // Spaceblaster (found on Jupiter): a ranged energy bolt.
+  blasterBoltSpeed: 520,
+  blasterCooldownMs: 380,
   tile: 32,
   worldHeight: 540,
   // Eating food at full health powers you up instead of doing nothing.

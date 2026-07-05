@@ -6,7 +6,8 @@
   "gravity": 0.95,
   "collectibles": {
     "treasure": { "id": "storm-pearl", "name": "Storm Pearl", "count": 14 },
-    "food": { "id": "cloud-fruit", "name": "Cloud Fruit", "heals": 1, "count": 6 }
+    "food": { "id": "cloud-fruit", "name": "Cloud Fruit", "heals": 1, "count": 6 },
+    "weapon": { "id": "spaceblaster", "name": "Spaceblaster" }
   },
   "monsters": [
     { "id": "cloud-puff", "name": "Cloud Puff", "hp": 2, "damage": 0.5, "behavior": "wander", "speed": 60, "count": 5 },

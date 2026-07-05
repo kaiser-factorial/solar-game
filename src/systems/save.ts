@@ -141,6 +141,11 @@ class GameState {
     this.touch();
   }
 
+  /** The spaceblaster is a persistent inventory item — owned once found on Jupiter. */
+  hasBlaster(): boolean {
+    return (this.save.inventory['spaceblaster'] ?? 0) > 0;
+  }
+
   addOrb(planetId: string) {
     if (!this.save.orbs.includes(planetId)) this.save.orbs.push(planetId);
     this.save.hearts.max = Math.min(this.save.hearts.max + 1, BALANCE.maxHeartsCap);

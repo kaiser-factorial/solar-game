@@ -35,6 +35,7 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
   // before a React effect would have subscribed — see sceneStore.ts.
   const scene = useSyncExternalStore(subscribeScene, getScene);
   const [hearts, setHearts] = useState(() => ({ ...state.save.hearts }));
+  const [hasBlaster, setHasBlaster] = useState(() => state.hasBlaster());
   const [celebration, setCelebration] = useState<Celebration | null>(null);
 
   useEffect(() => {
@@ -43,7 +44,10 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
       setCelebration({ id: celebrationSeq, ...payload });
     };
     game.events.on('ss-celebrate', onCelebrate);
-    const unsub = state.onChange(() => setHearts({ ...state.save.hearts }));
+    const unsub = state.onChange(() => {
+      setHearts({ ...state.save.hearts });
+      setHasBlaster(state.hasBlaster());
+    });
     return () => {
       game.events.off('ss-celebrate', onCelebrate);
       unsub();
@@ -122,6 +126,16 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
             <span>
               <Kbd>X</Kbd> attack
             </span>
+            {hasBlaster && (
+              <>
+                <span aria-hidden style={{ opacity: 0.5 }}>
+                  ·
+                </span>
+                <span>
+                  <Kbd>B</Kbd> blast
+                </span>
+              </>
+            )}
             <span aria-hidden style={{ opacity: 0.5 }}>
               ·
             </span>

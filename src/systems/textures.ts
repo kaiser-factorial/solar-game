@@ -268,6 +268,35 @@ export function makeCoreTextures(scene: Phaser.Scene): void {
   g.fillEllipse(7, 13, 4.5, 4.5);
   gen('flame', 14, 18);
 
+  // spaceblaster pickup — a little sci-fi ray gun. FULL COLOR (never tinted):
+  // steel-blue chassis, cyan energy core, a hot accent muzzle. ~22x16.
+  g.fillStyle(0x39445e); // grip block under the barrel
+  g.fillRect(4, 9, 5, 6);
+  g.fillStyle(0x8f9bb8); // main steel body / barrel
+  g.fillRoundedRect(2, 3, 15, 7, 2);
+  g.fillStyle(0x5b6683); // lower barrel shade
+  g.fillRect(2, 8, 15, 2);
+  g.fillStyle(0x2fe0ff); // cyan energy core window
+  g.fillRect(6, 5, 6, 3);
+  g.fillStyle(0xbdf6ff, 0.9); // core glint
+  g.fillRect(6, 5, 6, 1);
+  g.fillStyle(0xff7a3c); // hot accent muzzle
+  g.fillRect(17, 4, 4, 5);
+  g.fillStyle(0xffd27a); // muzzle tip highlight
+  g.fillRect(20, 5, 2, 3);
+  gen('blaster', 22, 16);
+
+  // bolt projectile — a short bright cyan/white energy bolt. FULL COLOR (never
+  // tinted) so it always reads as an energy shot regardless of planet accent.
+  // ~16x6. Fired horizontally; Planet.ts flips it for left-facing shots.
+  g.fillStyle(0x2fe0ff, 0.35); // outer glow
+  g.fillEllipse(8, 3, 16, 6);
+  g.fillStyle(0x39e6ff); // cyan body
+  g.fillEllipse(8, 3, 13, 4);
+  g.fillStyle(0xffffff); // hot white core streak
+  g.fillEllipse(9, 3, 8, 2);
+  gen('bolt', 16, 6);
+
   // boss — big horned blob
   g.fillStyle(0xffffff);
   g.fillTriangle(12, 28, 22, 2, 32, 28);
