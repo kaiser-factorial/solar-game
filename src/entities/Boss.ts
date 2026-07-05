@@ -14,6 +14,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private modeUntil = 0;
   private chargeDir = 1;
   private enraged = false;
+  private auraColor = 0xffffff;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private glow: any = null;
 
@@ -23,6 +24,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.def = def;
     this.hp = this.maxHp = def.hp;
+    this.auraColor = tint;
     this.setDepth(4);
     const body = this.body as Phaser.Physics.Arcade.Body;
     const bw = Math.round(this.width * 0.7);
@@ -38,25 +40,37 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  /**
+   * A visual-only shockwave ring. IMPORTANT: never scale/tween the boss sprite
+   * itself for drama — scaling an Arcade sprite also scales its collision body,
+   * which shoves it into the ground tiles and ejects it through the floor.
+   */
+  private shockwave(color: number, scaleTo: number): void {
+    const ring = this.scene.add.circle(this.x, this.y, 22, color, 0);
+    ring.setStrokeStyle(4, color, 0.9).setDepth(3);
+    this.scene.tweens.add({
+      targets: ring,
+      scale: scaleTo,
+      alpha: 0,
+      duration: 420,
+      ease: 'Cubic.out',
+      onComplete: () => ring.destroy(),
+    });
+  }
+
   wake(time: number): void {
     if (this.awake) return;
     this.awake = true;
     this.modeUntil = time + 1800;
-    // dramatic entrance punch
-    this.scene.tweens.add({
-      targets: this,
-      scaleX: 1.18,
-      scaleY: 1.18,
-      yoyo: true,
-      repeat: 1,
-      duration: 160,
-      ease: 'Quad.out',
-    });
+    // dramatic entrance — non-physics flourishes only
+    this.shockwave(this.auraColor, 7);
+    this.scene.cameras.main.shake(250, 0.008);
   }
 
   private enrage(): void {
     this.enraged = true;
     this.setTint(0xff6b6b);
+    this.scene.time.delayedCall(450, () => this.clearTint());
     if (this.glow) {
       this.scene.tweens.add({
         targets: this.glow,
@@ -66,15 +80,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         repeat: 2,
       });
     }
-    this.scene.tweens.add({
-      targets: this,
-      scaleX: 1.14,
-      scaleY: 1.14,
-      yoyo: true,
-      repeat: 3,
-      duration: 110,
-      onComplete: () => this.clearTint(),
-    });
+    this.shockwave(0xff5533, 5);
+    this.scene.cameras.main.shake(200, 0.006);
   }
 
   act(time: number, player: Player): void {
