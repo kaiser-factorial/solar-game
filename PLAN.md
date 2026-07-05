@@ -204,7 +204,7 @@ Static Vite build, so either works. Vercel wins on preview deploys ("try this ne
 
 ### Kid-friendly sign-in (important detail)
 
-Kids don't have email addresses. Scheme: the game shows a **"Who's playing?"** screen — kid types a **player name + 4-digit PIN**. Under the hood the client maps this to Supabase email/password auth as `<name>@solarscouts.local` with the PIN as password (email confirmation disabled in Supabase settings). Zero custom backend, feels like a game, not a bank login. Family-scale threat model: fine. *(Phase 2 nicety: emoji-based secret codes instead of PINs.)*
+Kids don't have email addresses. Scheme: the game shows a **"Who's playing?"** screen — kid types a **player name + 4-digit PIN**. Under the hood the client maps this to Supabase email/password auth as `scout-<name>@example.com` with the PIN as password (Supabase DNS-validates email domains, so the reserved `example.com` is used; email confirmation disabled in Supabase settings). Zero custom backend, feels like a game, not a bank login. Family-scale threat model: fine. *(Phase 2 nicety: emoji-based secret codes instead of PINs.)*
 
 ---
 

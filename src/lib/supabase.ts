@@ -15,7 +15,9 @@ export const configured = () => supabase !== null;
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) || 'scout';
 }
-const emailFor = (name: string) => `${slugify(name)}@solarscouts.local`;
+// example.com is RFC-reserved: real DNS (passes Supabase validation), never
+// receives mail. Fine here because "Confirm email" is disabled for this project.
+const emailFor = (name: string) => `scout-${slugify(name)}@example.com`;
 const passFor = (pin: string) => `pin:${pin}:scouts`;
 
 async function pushNow(): Promise<void> {
