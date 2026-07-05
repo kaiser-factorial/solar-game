@@ -9,7 +9,15 @@ const TEXTURE_BY_BEHAVIOR: Record<MonsterDef['behavior'], string> = {
   fly: 'flyer',
   'hover-shoot': 'shooter',
   jumper: 'jumper',
+  'flame-dropper': 'dropper',
 };
+
+/**
+ * The flame-dropper clamps its hover to this many tiles above its spawn ground
+ * regardless of the JSON flyHeight, so a jump + up-aimed slash can always reach
+ * it — even on the heaviest planet (Jupiter's jump peaks at ~2.5 tiles).
+ */
+const FLAME_DROP_MAX_TILES = 2;
 
 export class Monster extends Phaser.Physics.Arcade.Sprite {
   def: MonsterDef;
@@ -25,13 +33,19 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.def = def;
     this.hp = def.hp;
-    this.homeY = y - (def.flyHeight ?? 0) * BALANCE.tile;
+    // Flame-droppers clamp their hover low enough to stay killable on every
+    // planet; other flyers honour their JSON flyHeight as-is.
+    const hoverTiles =
+      def.behavior === 'flame-dropper'
+        ? Math.min(def.flyHeight ?? FLAME_DROP_MAX_TILES, FLAME_DROP_MAX_TILES)
+        : def.flyHeight ?? 0;
+    this.homeY = y - hoverTiles * BALANCE.tile;
     this.nextActionAt = 800 + Math.random() * (def.actionCooldownMs ?? 2000);
     this.setTint(tint);
     this.setDepth(4);
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setSize(this.width - 6, this.height - 4);
-    if (def.behavior === 'fly' || def.behavior === 'hover-shoot') {
+    if (def.behavior === 'fly' || def.behavior === 'hover-shoot' || def.behavior === 'flame-dropper') {
       body.setAllowGravity(false);
       this.y = this.homeY;
     }
@@ -53,6 +67,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         break;
       case 'jumper':
         this.jumpMove(time, body, player);
+        break;
+      case 'flame-dropper':
+        this.flameDropMove(time, body);
         break;
     }
   }
@@ -93,6 +110,26 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (time > this.nextActionAt) {
       this.nextActionAt = time + (this.def.actionCooldownMs ?? 2400);
       this.scene.events.emit('monster-special', { type: 'shoot', x: this.x, y: this.y, targetX: player.x, targetY: player.y });
+    }
+  }
+
+  /**
+   * Hovers LOW (clamped in the constructor to a reachable height) and drifts
+   * side to side calmly, dropping a flame straight down on a cooldown. Being
+   * within jump reach is the whole point — it's a normal Monster with hp, so a
+   * jump + up-aimed slash kills it on any planet.
+   */
+  private flameDropMove(time: number, body: Phaser.Physics.Arcade.Body): void {
+    if (time > this.nextTurnAt) {
+      this.dir = Math.random() < 0.5 ? -1 : 1;
+      this.nextTurnAt = time + 1400 + Math.random() * 1400;
+    }
+    body.setVelocityX(this.dir * this.def.speed * 0.5); // calmer drift than a plain flyer
+    body.setVelocityY((this.homeY - this.y) * 4); // spring back to hover height
+    this.setFlipX(this.dir < 0);
+    if (time > this.nextActionAt) {
+      this.nextActionAt = time + (this.def.actionCooldownMs ?? 2400);
+      this.scene.events.emit('monster-special', { type: 'drop-flame', x: this.x, y: this.y });
     }
   }
 

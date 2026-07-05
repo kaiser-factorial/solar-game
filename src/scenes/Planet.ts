@@ -171,8 +171,13 @@ export class PlanetScene extends Phaser.Scene {
       this.boss.setArenaBounds(this.arenaX, (cols - 3) * TILE);
     }
 
-    // --- hazards: falling debris (data-driven per planet) ---
-    this.debris = this.physics.add.group();
+    // --- hazards: debris (data-driven per planet). 'fall' rains from the top,
+    //     'horizontal' flies in from a screen edge at player height, 'mixed'
+    //     rolls one or the other each spawn. Group defaults to no gravity so
+    //     debris keeps its predictable authored speed — adding a body to an
+    //     Arcade group otherwise re-enables gravity from the world default,
+    //     which would accelerate falling debris and drag horizontal debris down. ---
+    this.debris = this.physics.add.group({ allowGravity: false });
     if (def.hazards?.debris) {
       const hz = def.hazards.debris;
       this.time.addEvent({
@@ -180,8 +185,24 @@ export class PlanetScene extends Phaser.Scene {
         loop: true,
         callback: () => {
           const cam = this.cameras.main;
-          const x = cam.worldView.x + Math.random() * cam.worldView.width;
-          this.debris.add(new Debris(this, x, -20, hz.speed, hz.damage, accent));
+          const mode =
+            hz.direction === 'mixed'
+              ? Math.random() < 0.5
+                ? 'horizontal'
+                : 'fall'
+              : hz.direction ?? 'fall';
+          if (mode === 'horizontal') {
+            // Fly in from just off the left or right camera edge, at a height
+            // band around the player, heading across the view.
+            const fromLeft = Math.random() < 0.5;
+            const x = fromLeft ? cam.worldView.x - 20 : cam.worldView.right + 20;
+            const y = this.player.y + (Math.random() - 0.5) * 80;
+            const vx = (fromLeft ? 1 : -1) * hz.speed;
+            this.spawnDebris(new Debris(this, x, y, vx, hz.damage, accent, 'debris', 'horizontal'));
+          } else {
+            const x = cam.worldView.x + Math.random() * cam.worldView.width;
+            this.spawnDebris(new Debris(this, x, -20, hz.speed, hz.damage, accent, 'debris', 'fall'));
+          }
         },
       });
     }
@@ -250,7 +271,14 @@ export class PlanetScene extends Phaser.Scene {
     this.events.on(
       'monster-special',
       (payload: { type: string; x: number; y: number; targetX: number; targetY: number }) => {
-        if (payload.type === 'shoot') this.spawnRock(payload.x, payload.y, payload.targetX, payload.targetY, accent);
+        if (payload.type === 'shoot') {
+          this.spawnRock(payload.x, payload.y, payload.targetX, payload.targetY, accent);
+        } else if (payload.type === 'drop-flame') {
+          // A flame falls straight down and joins the debris group, so it
+          // already collides with the ground, overlaps (and damages) the
+          // player, and is swept off-world. Full-color 'flame' texture: no tint.
+          this.spawnDebris(new Debris(this, payload.x, payload.y, BALANCE.flameDropSpeed, 1, null, 'flame', 'fall'));
+        }
       }
     );
 
@@ -407,6 +435,16 @@ export class PlanetScene extends Phaser.Scene {
     this.game.events.emit('ss-celebrate', { variant: 'sparkles', tone: 'success' });
     this.floaty(this.player.x, this.player.y - 40, 'POWERED UP!', '#ffe066');
     toast(this, 'Speed & attack boosted for a bit!');
+  }
+
+  /**
+   * Add a debris/flame hazard to the shared group, THEN launch it — a body
+   * added to an Arcade group inherits the group's velocity/gravity defaults, so
+   * the authored motion has to be (re)applied after add(), not before.
+   */
+  private spawnDebris(deb: Debris): void {
+    this.debris.add(deb);
+    deb.launch();
   }
 
   /** One rock arcing toward (targetX, targetY) — shared by rockThrow and projectileBarrage. */
@@ -694,13 +732,16 @@ export class PlanetScene extends Phaser.Scene {
     }
 
     // sweep any debris/rocks that missed the ground collider and fell out of the
-    // world. Snapshot first — destroying an object mid-iterate would corrupt the
+    // world — plus horizontal debris that has flown clear off the sides.
+    // Snapshot first — destroying an object mid-iterate would corrupt the
     // group's cached-length iteration and crash the game loop (same footgun as
-    // scanSlashHits); this runs every frame with constantly-falling debris.
+    // scanSlashHits); this runs every frame with constantly-moving debris.
+    const worldW = this.physics.world.bounds.width;
     const sweep = (g: Phaser.Physics.Arcade.Group) => {
       for (const o of g.getChildren().slice()) {
         const obj = o as Phaser.GameObjects.Sprite;
-        if (obj.active && obj.y > H + 100) obj.destroy();
+        if (!obj.active) continue;
+        if (obj.y > H + 100 || obj.x < -100 || obj.x > worldW + 100) obj.destroy();
       }
     };
     sweep(this.debris);

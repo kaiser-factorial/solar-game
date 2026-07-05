@@ -31,6 +31,8 @@ export const BALANCE = {
   bossGroundPoundRadius: 110,
   bossGroundPoundDamage: 1,
   bossMinionCooldownMs: 9000,
+  // Speed of a flame dropped straight down by a flame-dropper robot.
+  flameDropSpeed: 190,
   tile: 32,
   worldHeight: 540,
   // Eating food at full health powers you up instead of doing nothing.

@@ -241,6 +241,33 @@ export function makeCoreTextures(scene: Phaser.Scene): void {
   g.fillCircle(18, 8, 2.3);
   gen('jumper', 28, 26);
 
+  // dropper — a boxy hovering robot with a downward nozzle/vent under its belly
+  // (white body + dark eyes so the per-planet tint colors the chassis). Its
+  // silhouette reads clearly apart from the round 'shooter' turret.
+  g.fillStyle(0xffffff);
+  g.fillRoundedRect(4, 2, 24, 18, 4); // squat rectangular body
+  g.fillStyle(0x101018);
+  g.fillRect(9, 8, 5, 4); // eye lenses
+  g.fillRect(18, 8, 5, 4);
+  g.fillStyle(0xffffff);
+  g.fillRect(12, 20, 8, 4); // downward nozzle stub under the belly
+  g.fillTriangle(11, 24, 21, 24, 16, 30); // vent cone the flame drips from
+  g.fillStyle(0x101018, 0.5);
+  g.fillRect(13, 21, 6, 1.5); // dark vent slit
+  gen('dropper', 32, 32);
+
+  // flame — a small orange/yellow teardrop of fire. FULL COLOR (never tinted),
+  // so a dropped flame always reads as fire regardless of the planet accent.
+  g.fillStyle(0xff7a1a); // outer flame
+  g.fillTriangle(7, 0, 0, 13, 14, 13);
+  g.fillEllipse(7, 13, 14, 10);
+  g.fillStyle(0xffb32e); // mid flame
+  g.fillTriangle(7, 4, 2, 13, 12, 13);
+  g.fillEllipse(7, 13, 9, 7);
+  g.fillStyle(0xffe680); // hot core
+  g.fillEllipse(7, 13, 4.5, 4.5);
+  gen('flame', 14, 18);
+
   // boss — big horned blob
   g.fillStyle(0xffffff);
   g.fillTriangle(12, 28, 22, 2, 32, 28);

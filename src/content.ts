@@ -12,10 +12,13 @@ import plutoJson from '../content/planets/pluto.json';
  * 'fly' hovers at a fixed height and drifts side to side, ignoring gravity.
  * 'hover-shoot' holds position/altitude and periodically fires a slow
  * projectile at the player. 'jumper' idles then leaps toward the player
- * on a cooldown. New archetypes let later planets feel different, not
- * just re-tinted Moon/Mars monsters at higher numbers.
+ * on a cooldown. 'flame-dropper' is a low-hovering robot that drifts
+ * slowly and drops flames straight down — unlike 'hover-shoot' it clamps
+ * its altitude to stay within jump reach on every planet, so it's
+ * killable everywhere. New archetypes let later planets feel different,
+ * not just re-tinted Moon/Mars monsters at higher numbers.
  */
-export type MonsterBehavior = 'wander' | 'chase' | 'fly' | 'hover-shoot' | 'jumper';
+export type MonsterBehavior = 'wander' | 'chase' | 'fly' | 'hover-shoot' | 'jumper' | 'flame-dropper';
 
 export interface MonsterDef {
   id: string;
@@ -25,9 +28,9 @@ export interface MonsterDef {
   behavior: MonsterBehavior;
   speed: number;
   count: number;
-  /** For 'fly'/'hover-shoot': how high above its spawn point it holds. */
+  /** For 'fly'/'hover-shoot'/'flame-dropper': how high above its spawn point it holds. */
   flyHeight?: number;
-  /** For 'hover-shoot': projectile cooldown. For 'jumper': leap cooldown. */
+  /** For 'hover-shoot': projectile cooldown. For 'jumper': leap cooldown. For 'flame-dropper': flame-drop cooldown. */
   actionCooldownMs?: number;
 }
 
@@ -63,6 +66,12 @@ export interface DebrisDef {
   intervalMs: number;
   damage: number;
   speed: number;
+  /**
+   * How the debris travels. 'fall' (default) rains straight down from the
+   * top of the screen; 'horizontal' flies in from a screen edge at roughly
+   * player height; 'mixed' randomly picks one or the other per spawn.
+   */
+  direction?: 'fall' | 'horizontal' | 'mixed';
 }
 
 export interface PlanetDef {

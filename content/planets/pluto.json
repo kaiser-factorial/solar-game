@@ -11,7 +11,7 @@
   "monsters": [
     { "id": "frost-wisp", "name": "Frost Wisp", "hp": 4, "damage": 1, "behavior": "fly", "speed": 95, "count": 5, "flyHeight": 3 },
     { "id": "comet-stalker", "name": "Comet Stalker", "hp": 6, "damage": 1.5, "behavior": "chase", "speed": 130, "count": 4 },
-    { "id": "ice-sentinel", "name": "Ice Sentinel", "hp": 5, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 4, "actionCooldownMs": 2200 }
+    { "id": "ice-sentinel", "name": "Ice Sentinel", "hp": 5, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 3, "actionCooldownMs": 2200 }
   ],
   "boss": { "id": "the-kuiper-warden", "name": "The Kuiper Warden", "hp": 42, "damage": 2, "speed": 120, "specials": ["rockThrow", "projectileBarrage", "groundPound"], "phases": 3, "minionMonsterId": "comet-stalker", "maxMinions": 3, "midFightPowerup": true },
   "hazards": { "debris": { "intervalMs": 2000, "damage": 1.5, "speed": 190 } },

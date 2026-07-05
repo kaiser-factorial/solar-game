@@ -10,7 +10,8 @@
   },
   "monsters": [
     { "id": "thistle-hopper", "name": "Thistle Hopper", "hp": 3, "damage": 1, "behavior": "jumper", "speed": 80, "count": 4, "actionCooldownMs": 2200 },
-    { "id": "sky-swooper", "name": "Sky Swooper", "hp": 3, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 4, "actionCooldownMs": 2600 }
+    { "id": "sky-swooper", "name": "Sky Swooper", "hp": 3, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 3, "actionCooldownMs": 2600 },
+    { "id": "ember-drone", "name": "Ember Drone", "hp": 3, "damage": 1, "behavior": "flame-dropper", "speed": 55, "count": 3, "flyHeight": 2, "actionCooldownMs": 2600 }
   ],
   "boss": { "id": "bramble-warden", "name": "The Bramble Warden", "hp": 26, "damage": 1.5, "speed": 95, "specials": ["rockThrow", "groundPound"], "phases": 2, "midFightPowerup": false },
   "hazards": { "debris": { "intervalMs": 2400, "damage": 1, "speed": 160 } },

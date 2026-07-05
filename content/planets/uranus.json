@@ -10,7 +10,7 @@
   },
   "monsters": [
     { "id": "frost-crawler", "name": "Frost Crawler", "hp": 5, "damage": 1, "behavior": "chase", "speed": 115, "count": 4 },
-    { "id": "glacial-wisp", "name": "Glacial Wisp", "hp": 3, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 4, "actionCooldownMs": 2400 },
+    { "id": "glacial-wisp", "name": "Glacial Wisp", "hp": 3, "damage": 1, "behavior": "hover-shoot", "speed": 60, "count": 3, "flyHeight": 3, "actionCooldownMs": 2400 },
     { "id": "ice-hopper", "name": "Ice Hopper", "hp": 4, "damage": 1.5, "behavior": "jumper", "speed": 90, "count": 4, "actionCooldownMs": 1800 }
   ],
   "boss": { "id": "cryovex-shard-king", "name": "Cryovex, the Shard King", "hp": 30, "damage": 1.5, "speed": 105, "specials": ["rockThrow", "projectileBarrage", "groundPound"], "phases": 3, "minionMonsterId": "ice-hopper", "maxMinions": 2, "midFightPowerup": true },
