@@ -5,6 +5,8 @@ their aunt). Explore the planets, collect treasure, fight monsters, beat each
 world's boss to win its **shard** — and one day, jump to another solar system
 for the hardest boss of all.
 
+Live here: https://kaiser-factorial.github.io/solar-game/
+
 Full design + roadmap: [PLAN.md](PLAN.md)
 
 ## Play
