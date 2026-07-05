@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import type Phaser from 'phaser';
 import {
   ThemeProvider,
+  ToastProvider,
   HealthBar,
   Splash,
   GlobalAnimation,
@@ -51,45 +52,50 @@ export function GameOverlay({ game }: { game: Phaser.Game }) {
 
   return (
     <ThemeProvider defaultTheme="arcade" storageKey={null}>
-      {scene === 'boot' && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Splash
-            title="Moon Shard"
-            subtitle="an interplanetary treasure hunt"
-            prompt="warming up the rockets..."
-            shader
+      {/* Not using useToast() yet, but this is the documented standard
+          scaffolding alongside ThemeProvider — wiring it in now means any
+          future toast (e.g. "signed in!") just calls the hook, no restructure. */}
+      <ToastProvider>
+        {scene === 'boot' && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Splash
+              title="Moon Shard"
+              subtitle="an interplanetary treasure hunt"
+              prompt="warming up the rockets..."
+              shader
+            />
+          </div>
+        )}
+        {showHearts && (
+          <div
+            className="px-pixelated"
+            style={{ position: 'absolute', left: 16, top: heartsTop, width: 168, pointerEvents: 'none' }}
+          >
+            {/* cells=max so each pip is exactly one heart (the default cells=10
+                is meant for percentage-style HP pools, not our small 3-10 count) */}
+            <HealthBar kind="hp" value={hearts.current} max={hearts.max} cells={hearts.max} label="HP" />
+          </div>
+        )}
+        {celebration && (
+          <GlobalAnimation
+            key={celebration.id}
+            variant={celebration.variant}
+            tone={celebration.tone}
+            loop={false}
+            onComplete={() => setCelebration(null)}
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
           />
-        </div>
-      )}
-      {showHearts && (
-        <div
-          className="px-pixelated"
-          style={{ position: 'absolute', left: 16, top: heartsTop, width: 168, pointerEvents: 'none' }}
-        >
-          {/* cells=max so each pip is exactly one heart (the default cells=10
-              is meant for percentage-style HP pools, not our small 3-10 count) */}
-          <HealthBar kind="hp" value={hearts.current} max={hearts.max} cells={hearts.max} label="HP" />
-        </div>
-      )}
-      {celebration && (
-        <GlobalAnimation
-          key={celebration.id}
-          variant={celebration.variant}
-          tone={celebration.tone}
-          loop={false}
-          onComplete={() => setCelebration(null)}
-          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-        />
-      )}
+        )}
+      </ToastProvider>
     </ThemeProvider>
   );
 }

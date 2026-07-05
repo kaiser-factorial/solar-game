@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { createRoot } from 'react-dom/client';
 import { GameOverlay } from './GameOverlay';
 import { initSceneStore } from './sceneStore';
-import 'puxel/styles.css';
+import 'puxel/puxel.css';
 
 /**
  * Mounts the React/Puxel overlay into Phaser's own managed DOM container
