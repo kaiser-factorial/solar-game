@@ -28,6 +28,37 @@ node scripts/playtest.mjs /tmp   # automated browser playtest w/ screenshots
 
 Deploys to GitHub Pages automatically on push to `main`.
 
+## Status (as of 2026-07-05)
+
+Live at https://kaiser-factorial.github.io/solar-game/ — Moon + Mars playable,
+character creator, star map with animated orbits + greyed-out locked planets,
+hearts/shards HUD, seeded terrain, stomp attack, per-boss art (The Moonster /
+The Red Baron) with wake/enrage effects, composed 8-bit music + SFX, name+PIN
+auth via Supabase ("catchall" project — table setup + RLS done; **still
+pending: turn off "Confirm email" in that project's Auth settings**, otherwise
+sign-in returns no session).
+
+### Known bugs — reported by playtesting, not yet fixed
+
+1. **Stomp sometimes damages the player instead of the monster.** Jumping on
+   a monster occasionally registers as the player taking a hit rather than a
+   clean stomp, even when it visually looks like a from-above landing. Likely
+   a race/ordering issue between the stomp-detection overlap and the regular
+   damage overlap in `src/scenes/Planet.ts` (both are registered on the same
+   `player`↔`monsters` overlap pair — check whether the stomp velocity/position
+   check is too strict, or whether both callbacks can fire in the same frame).
+2. **Game froze on attacking The Moonster.** First reported attack against a
+   boss locked up the game. Not yet reproduced/diagnosed — needs a repro
+   (attack timing, boss HP at time of hit, browser console errors) before
+   guessing at a fix. Prime suspects: `src/entities/Boss.ts` (the `hit()` /
+   enrage path added when boss art shipped) or the overlap callback in
+   `src/scenes/Planet.ts` that calls `boss.hit()` and emits `ss-boss`.
+
+Next session: reproduce both with the browser console open (or via
+`scripts/playtest.mjs`) before changing code — especially the freeze, since
+"attacked and froze" could be anything from an infinite loop in `Boss.act()`
+to an uncaught exception stopping the Phaser update loop silently.
+
 ### Where things live
 
 - `content/planets/*.json` — planets are **data, not code**: palette, gravity,
