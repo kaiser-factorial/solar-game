@@ -1,6 +1,8 @@
 import moonJson from '../content/planets/moon.json';
 import marsJson from '../content/planets/mars.json';
 import earthJson from '../content/planets/earth.json';
+import venusJson from '../content/planets/venus.json';
+import mercuryJson from '../content/planets/mercury.json';
 import jupiterJson from '../content/planets/jupiter.json';
 import saturnJson from '../content/planets/saturn.json';
 import uranusJson from '../content/planets/uranus.json';
@@ -84,6 +86,8 @@ export interface PlanetDef {
     width: number;
     /** 0..1 — how dramatic the terrain's climbs/descents/platforming get. Untuned planets default low (gentle hills). */
     verticality?: number;
+    /** 'surface' (default) is open sky; 'cave' is an enclosed underground level with a ceiling + tube corridors. */
+    style?: 'surface' | 'cave';
   };
   gravity: number;
   collectibles: {
@@ -101,6 +105,8 @@ export const PLANETS: Record<string, PlanetDef> = {
   moon: moonJson as PlanetDef,
   mars: marsJson as PlanetDef,
   earth: earthJson as PlanetDef,
+  venus: venusJson as PlanetDef,
+  mercury: mercuryJson as PlanetDef,
   jupiter: jupiterJson as PlanetDef,
   saturn: saturnJson as PlanetDef,
   uranus: uranusJson as PlanetDef,
@@ -112,6 +118,8 @@ export const ORB_COLORS: Record<string, number> = {
   moon: 0xd8dce8,
   mars: 0xff6a33,
   earth: 0xe8d24a,
+  venus: 0xff8a2a,
+  mercury: 0xffe27a,
   jupiter: 0xf5dcae,
   saturn: 0xeaf3f7,
   uranus: 0xe8fbff,

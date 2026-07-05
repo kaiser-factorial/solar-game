@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../systems/balance';
 import { mulberry32 } from '../systems/rng';
-import { generateHeights, maxJumpTiles } from '../systems/terrain';
+import { generateHeights, generateCave, maxJumpTiles } from '../systems/terrain';
 import { state } from '../systems/save';
 import { PLANETS, ORB_COLORS, FOOD_HEALS, hexToInt, type PlanetDef } from '../content';
 import { ensurePlayerTexture } from '../systems/textures';
@@ -66,12 +66,22 @@ export class PlanetScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, W, H);
     this.cameras.main.setBounds(0, 0, W, H);
     this.cameras.main.setBackgroundColor(def.palette.sky);
-    sprinkleStars(this, 160, 0.25, W * 0.25 + 960, H);
+    const isCave = def.terrain.style === 'cave';
+    // Caves are enclosed rock, not open sky — swap the dense starfield for a few
+    // faint mineral glints in the dark.
+    sprinkleStars(this, isCave ? 34 : 160, isCave ? 0.15 : 0.25, W * 0.25 + 960, H);
 
     // --- terrain (seeded: identical on every visit & device) ---
     const rng = mulberry32(def.terrain.seed);
-    this.heights = generateHeights(rng, cols, def.terrain.verticality ?? 0.2);
     this.ground = this.physics.add.staticGroup();
+    let ceiling: number[] | null = null;
+    if (isCave) {
+      const cave = generateCave(rng, cols, def.terrain.verticality ?? 0.5);
+      this.heights = cave.floor;
+      ceiling = cave.ceiling;
+    } else {
+      this.heights = generateHeights(rng, cols, def.terrain.verticality ?? 0.2);
+    }
     for (let i = 0; i < cols; i++) {
       const hh = this.heights[i] * TILE;
       const img = this.ground.create(i * TILE + TILE / 2, H - hh / 2, 'tile') as Phaser.Physics.Arcade.Image;
@@ -79,27 +89,42 @@ export class PlanetScene extends Phaser.Scene {
     }
     const groundTop = (col: number) => H - this.heights[col] * TILE;
 
-    // --- floating platforms (verticality — separate from base ground, so
-    //     existing collectible/monster placement math is untouched).
-    //     stepsAbove is scaled to THIS planet's actual jump reach — a fixed
-    //     "3-5 tiles up" would be unreachable on a heavy planet like Jupiter
-    //     (~2.5 tile jump) and wastefully modest on a floaty one like Pluto. ---
-    const jumpTiles = maxJumpTiles(def.gravity);
-    const platformMaxSteps = Math.max(2, Math.floor(jumpTiles * 0.65));
-    for (let i = 10; i < cols - 30; ) {
-      if (rng() < BALANCE.platformChance) {
-        const width = 2 + Math.floor(rng() * 3);
-        const stepsAbove = 2 + Math.floor(rng() * Math.max(1, platformMaxSteps - 1));
-        let highestTop = H;
-        for (let c = i; c < i + width && c < cols; c++) highestTop = Math.min(highestTop, groundTop(c));
-        const platformY = highestTop - stepsAbove * TILE;
-        for (let c = i; c < i + width && c < cols; c++) {
-          const img = this.ground.create(c * TILE + TILE / 2, platformY, 'tile') as Phaser.Physics.Arcade.Image;
-          img.setDisplaySize(TILE, TILE).setTint(groundCol).refreshBody();
+    if (ceiling) {
+      // Enclosed roof — solid tiles hanging from the top, part of `ground` so
+      // the player bonks their head in the tube pinches. A shade darker than the
+      // floor so the rock reads as overhead.
+      const ceilCol = Phaser.Display.Color.IntegerToColor(groundCol).darken(28).color;
+      for (let i = 0; i < cols; i++) {
+        const ch = ceiling[i] * TILE;
+        const img = this.ground.create(i * TILE + TILE / 2, ch / 2, 'tile') as Phaser.Physics.Arcade.Image;
+        img.setDisplaySize(TILE, ch).setTint(ceilCol).refreshBody();
+      }
+      this.decorateCave(cols, groundTop, ceiling, accent);
+    }
+
+    // --- floating platforms (surface only — caves get their verticality from
+    //     the tube corridors). stepsAbove is scaled to THIS planet's actual jump
+    //     reach — a fixed "3-5 tiles up" would be unreachable on a heavy planet
+    //     like Jupiter (~2.5 tile jump) and wastefully modest on a floaty one
+    //     like Pluto. ---
+    if (!isCave) {
+      const jumpTiles = maxJumpTiles(def.gravity);
+      const platformMaxSteps = Math.max(2, Math.floor(jumpTiles * 0.65));
+      for (let i = 10; i < cols - 30; ) {
+        if (rng() < BALANCE.platformChance) {
+          const width = 2 + Math.floor(rng() * 3);
+          const stepsAbove = 2 + Math.floor(rng() * Math.max(1, platformMaxSteps - 1));
+          let highestTop = H;
+          for (let c = i; c < i + width && c < cols; c++) highestTop = Math.min(highestTop, groundTop(c));
+          const platformY = highestTop - stepsAbove * TILE;
+          for (let c = i; c < i + width && c < cols; c++) {
+            const img = this.ground.create(c * TILE + TILE / 2, platformY, 'tile') as Phaser.Physics.Arcade.Image;
+            img.setDisplaySize(TILE, TILE).setTint(groundCol).refreshBody();
+          }
+          i += width + BALANCE.platformMinGapCols + Math.floor(rng() * (BALANCE.platformMaxGapCols - BALANCE.platformMinGapCols));
+        } else {
+          i += 4;
         }
-        i += width + BALANCE.platformMinGapCols + Math.floor(rng() * (BALANCE.platformMaxGapCols - BALANCE.platformMinGapCols));
-      } else {
-        i += 4;
       }
     }
 
@@ -581,6 +606,32 @@ export class PlanetScene extends Phaser.Scene {
     if (intent.aimY !== 0) return { x: 0, y: intent.aimY };
     if (intent.aimX !== 0) return { x: intent.aimX, y: 0 };
     return { x: this.player.facing, y: 0 };
+  }
+
+  /** Glowing crystals clinging to a cave's floor and ceiling — decoration only. */
+  private decorateCave(
+    cols: number,
+    groundTop: (c: number) => number,
+    ceiling: number[],
+    tint: number
+  ): void {
+    for (let i = 8; i < cols - 28; i += 6) {
+      this.addCrystal(i * TILE + TILE / 2, groundTop(i) - 5, tint, false);
+      const j = i + 3;
+      if (j < cols - 28) this.addCrystal(j * TILE + TILE / 2, ceiling[j] * TILE + 5, tint, true);
+    }
+  }
+
+  private addCrystal(x: number, y: number, tint: number, fromCeiling: boolean): void {
+    // Depth 0 + created before the player/monsters, so they read as wall
+    // decoration behind the action rather than obscuring it.
+    const glow = this.add.image(x, y, 'gem').setTint(tint).setScale(1.7).setAlpha(0.3).setDepth(0);
+    const core = this.add.image(x, y, 'gem').setTint(0xffffff).setScale(0.85).setAlpha(0.7).setDepth(0);
+    if (fromCeiling) {
+      glow.setFlipY(true);
+      core.setFlipY(true);
+    }
+    this.tweens.add({ targets: glow, alpha: 0.12, yoyo: true, repeat: -1, duration: 1100 + (x % 500) });
   }
 
   private createSlash(intent: InputIntent): void {

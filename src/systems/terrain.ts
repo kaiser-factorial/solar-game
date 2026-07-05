@@ -65,3 +65,76 @@ export function generateHeights(rng: () => number, cols: number, verticality = 0
   }
   return heights;
 }
+
+const WORLD_TILES = Math.floor(BALANCE.worldHeight / BALANCE.tile);
+
+/**
+ * Underground cave profile — a FLOOR height and a CEILING thickness per column,
+ * both grown by the same zone logic as the surface generator but constrained so
+ * the open corridor between them never drops below `minCorridor` tiles (so the
+ * player + jumps always fit). Where floor rises and ceiling dips together you
+ * get tight Mario-pipe pinches; where both pull back you get open caverns.
+ *
+ * Columns 0-5 are a flat, roomy spawn pad; the last 26 columns are the boss
+ * arena — flat floor + a thin ceiling so the tall boss has headroom.
+ */
+export function generateCave(
+  rng: () => number,
+  cols: number,
+  verticality = 0.5
+): { floor: number[]; ceiling: number[] } {
+  const floor: number[] = [];
+  const ceiling: number[] = [];
+  const minCorridor = 5; // walkable + jumpable headroom, always
+  const floorMin = 2;
+  const floorMax = Math.round(3 + verticality * 3); // up to 6 at v=1
+  const ceilMin = 1;
+  const ceilMax = Math.round(2 + verticality * 3); // up to 5 at v=1
+
+  let f = 3;
+  let c = 2;
+  let fZone: Zone = 'plateau';
+  let cZone: Zone = 'plateau';
+  let fLeft = 0;
+  let cLeft = 0;
+  const pick = (): Zone => {
+    const r = rng();
+    const flat = Math.max(0.15, 0.5 - verticality * 0.35);
+    if (r < flat) return 'plateau';
+    return r < flat + (1 - flat) / 2 ? 'climb' : 'descend';
+  };
+  const step = (zone: Zone, v: number): number => {
+    if (zone === 'climb' && rng() < 0.6 + verticality * 0.25) return v + 1;
+    if (zone === 'descend' && rng() < 0.6 + verticality * 0.25) return v - 1;
+    if (zone === 'plateau' && rng() < 0.25) return v + (rng() < 0.5 ? 1 : -1);
+    return v;
+  };
+
+  for (let i = 0; i < cols; i++) {
+    if (i < 6) {
+      f = 3;
+      c = 2;
+    } else if (i >= cols - 26) {
+      f = 3;
+      c = 1;
+    } else {
+      if (fLeft <= 0) {
+        fZone = pick();
+        fLeft = 4 + Math.floor(rng() * (7 + verticality * 10));
+      }
+      if (cLeft <= 0) {
+        cZone = pick();
+        cLeft = 4 + Math.floor(rng() * (7 + verticality * 10));
+      }
+      fLeft--;
+      cLeft--;
+      f = clamp(step(fZone, f), floorMin, floorMax);
+      c = clamp(step(cZone, c), ceilMin, ceilMax);
+      // Never pinch the corridor shut — pull the ceiling back if it gets tight.
+      if (WORLD_TILES - f - c < minCorridor) c = Math.max(ceilMin, WORLD_TILES - f - minCorridor);
+    }
+    floor.push(f);
+    ceiling.push(c);
+  }
+  return { floor, ceiling };
+}

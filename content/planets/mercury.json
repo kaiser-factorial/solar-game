@@ -1,0 +1,19 @@
+{
+  "id": "mercury",
+  "name": "Mercury",
+  "palette": { "ground": "#8a7a5c", "sky": "#0d0a06", "accent": "#ffe27a" },
+  "terrain": { "generator": "cave", "seed": 176, "width": 230, "verticality": 0.7, "style": "cave" },
+  "gravity": 0.38,
+  "collectibles": {
+    "treasure": { "id": "solar-shard", "name": "Solar Shard", "count": 13 },
+    "food": { "id": "sun-fig", "name": "Sun Fig", "heals": 1, "count": 6 }
+  },
+  "monsters": [
+    { "id": "solar-mite", "name": "Solar Mite", "hp": 4, "damage": 1, "behavior": "chase", "speed": 120, "count": 4 },
+    { "id": "scorch-dropper", "name": "Scorch Dropper", "hp": 4, "damage": 1, "behavior": "flame-dropper", "speed": 60, "count": 3, "flyHeight": 2, "actionCooldownMs": 2200 },
+    { "id": "spark-hopper", "name": "Spark Hopper", "hp": 4, "damage": 1, "behavior": "jumper", "speed": 100, "count": 3, "actionCooldownMs": 1800 }
+  ],
+  "boss": { "id": "sunforge-sentinel", "name": "The Sunforge Sentinel", "hp": 34, "damage": 1.5, "speed": 110, "specials": ["rockThrow", "projectileBarrage", "groundPound"], "phases": 3, "minionMonsterId": "solar-mite", "maxMinions": 2, "midFightPowerup": true },
+  "hazards": { "debris": { "intervalMs": 1600, "damage": 1, "speed": 240, "direction": "horizontal" } },
+  "celebration": "coin-rain"
+}

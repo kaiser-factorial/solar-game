@@ -1,0 +1,19 @@
+{
+  "id": "venus",
+  "name": "Venus",
+  "palette": { "ground": "#7a2e18", "sky": "#1a0805", "accent": "#ff8a2a" },
+  "terrain": { "generator": "cave", "seed": 104, "width": 220, "verticality": 0.6, "style": "cave" },
+  "gravity": 0.9,
+  "collectibles": {
+    "treasure": { "id": "sulfur-crystal", "name": "Sulfur Crystal", "count": 12 },
+    "food": { "id": "magma-pepper", "name": "Magma Pepper", "heals": 1, "count": 6 }
+  },
+  "monsters": [
+    { "id": "magma-crawler", "name": "Magma Crawler", "hp": 4, "damage": 1, "behavior": "chase", "speed": 110, "count": 4 },
+    { "id": "ember-wing", "name": "Ember Wing", "hp": 3, "damage": 1, "behavior": "fly", "speed": 90, "count": 3, "flyHeight": 2 },
+    { "id": "cinder-dropper", "name": "Cinder Dropper", "hp": 4, "damage": 1, "behavior": "flame-dropper", "speed": 60, "count": 3, "flyHeight": 2, "actionCooldownMs": 2400 }
+  ],
+  "boss": { "id": "magmaw-cave-tyrant", "name": "Magmaw, the Cave Tyrant", "hp": 28, "damage": 1.5, "speed": 100, "specials": ["rockThrow", "groundPound"], "phases": 2, "midFightPowerup": false },
+  "hazards": { "debris": { "intervalMs": 2000, "damage": 1, "speed": 200, "direction": "horizontal" } },
+  "celebration": "burst"
+}

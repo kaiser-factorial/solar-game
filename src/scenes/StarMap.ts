@@ -18,8 +18,8 @@ interface BodySpec {
 // since the difficulty ramp (Moon→Mars→Earth→gas giants→ice worlds) doesn't match
 // real orbital distance from the sun.
 const BODIES: BodySpec[] = [
-  { id: 'mercury', name: 'Mercury', r: 55, size: 4, color: 0x9c9c9c },
-  { id: 'venus', name: 'Venus', r: 82, size: 7, color: 0xd9a35a },
+  { id: 'mercury', name: 'Mercury', r: 55, size: 5, color: 0xd9b25a, playable: true },
+  { id: 'venus', name: 'Venus', r: 82, size: 7, color: 0xe08a3a, playable: true },
   { id: 'earth', name: 'Earth', r: 112, size: 8, color: 0x4a90d9, playable: true },
   { id: 'mars', name: 'Mars', r: 152, size: 6, color: 0xc1440e, playable: true },
   { id: 'jupiter', name: 'Jupiter', r: 202, size: 15, color: 0xc9a06c, playable: true },
@@ -29,10 +29,24 @@ const BODIES: BodySpec[] = [
   { id: 'pluto', name: 'Pluto', r: 358, size: 4, color: 0xbfe8ff, playable: true },
 ];
 
-// The actual play/unlock progression — each world opens once the previous one's
-// boss falls. Moon is the fixed starting point and isn't in BODIES (it orbits
-// Earth's node instead, see moonNode below).
-const UNLOCK_ORDER = ['moon', 'mars', 'earth', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+// The unlock graph: each world opens once its prerequisite's boss falls. The map
+// BRANCHES at Earth — go inward underground (Venus → Mercury) or outward along
+// the main spine (Mars → Jupiter → … → Pluto). Moon is the fixed start (no
+// prerequisite) and orbits Earth's node visually rather than sitting in BODIES.
+const UNLOCK_PREREQ: Record<string, string> = {
+  earth: 'moon',
+  venus: 'earth',
+  mercury: 'venus',
+  mars: 'earth',
+  jupiter: 'mars',
+  saturn: 'jupiter',
+  uranus: 'saturn',
+  neptune: 'uranus',
+  pluto: 'neptune',
+};
+// Everything with a glow ring / badge on the map: the start plus every world in
+// the graph.
+const PLAYABLE = ['moon', ...Object.keys(UNLOCK_PREREQ)];
 
 const CX = 480;
 const CY = 300;
@@ -139,9 +153,10 @@ export class StarMapScene extends Phaser.Scene {
   }
 
   private landable(id: string): boolean {
-    const idx = UNLOCK_ORDER.indexOf(id);
-    if (idx <= 0) return idx === 0; // moon (idx 0) is always open; non-progression bodies (-1) never are
-    return !!state.save.planets[UNLOCK_ORDER[idx - 1]]?.bossDefeated;
+    if (id === 'moon') return true; // the fixed starting world
+    const prereq = UNLOCK_PREREQ[id];
+    if (!prereq) return false; // not part of the progression graph
+    return !!state.save.planets[prereq]?.bossDefeated;
   }
 
   private nodeFor(id: string): Phaser.GameObjects.Container | undefined {
@@ -212,10 +227,9 @@ export class StarMapScene extends Phaser.Scene {
     }
     audio.sfx('denied');
     const name = BODIES.find((b) => b.id === hit)?.name ?? hit;
-    const idx = UNLOCK_ORDER.indexOf(hit);
-    if (idx > 0) {
-      const prev = UNLOCK_ORDER[idx - 1];
-      const prevName = prev === 'moon' ? 'Moon' : (BODIES.find((b) => b.id === prev)?.name ?? prev);
+    const prereq = UNLOCK_PREREQ[hit];
+    if (prereq) {
+      const prevName = prereq === 'moon' ? 'Moon' : (BODIES.find((b) => b.id === prereq)?.name ?? prereq);
       toast(this, `${name} is locked — beat the ${prevName} boss first!`);
     } else {
       toast(this, `${name} — not a landable world.`);
@@ -244,7 +258,7 @@ export class StarMapScene extends Phaser.Scene {
 
     // glow rings on landable worlds, shard badge on beaten ones
     const pulse = 0.35 + 0.25 * Math.sin(_time / 300);
-    for (const id of UNLOCK_ORDER) {
+    for (const id of PLAYABLE) {
       const pos = this.positions[id];
       if (!pos) continue;
       if (state.save.planets[id]?.bossDefeated) {

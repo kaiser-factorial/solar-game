@@ -1127,6 +1127,182 @@ function drawKuiperWarden(g: Phaser.GameObjects.Graphics): void {
   g.lineBetween(78, 88, 82, 100);
 }
 
+// MAGMAW, THE CAVE TYRANT — a molten volcanic beast of igneous rock veined with glowing lava.
+function drawMagmaw(g: Phaser.GameObjects.Graphics): void {
+  // jagged obsidian rock spikes/horns fanning out — the silhouette gimmick
+  g.fillStyle(0x2a140c);
+  g.fillTriangle(18, 48, 8, 4, 34, 44);
+  g.fillTriangle(110, 48, 120, 4, 94, 44);
+  g.fillTriangle(46, 40, 40, 2, 58, 40);
+  g.fillTriangle(82, 40, 88, 2, 70, 40);
+  g.fillStyle(0x160a06, 0.9);
+  g.fillTriangle(8, 4, 14, 10, 34, 44);
+  g.fillTriangle(120, 4, 114, 10, 94, 44);
+  g.fillTriangle(40, 2, 44, 8, 58, 40);
+  // shoulder obsidian shards jutting sideways
+  g.fillStyle(0x2a140c);
+  g.fillTriangle(6, 62, 24, 50, 26, 78);
+  g.fillTriangle(122, 62, 104, 50, 102, 78);
+
+  // dark igneous-rock body mass (deep rust over charcoal lumps)
+  g.fillStyle(0x3a1a10);
+  g.fillEllipse(64, 76, 118, 74);
+  g.fillCircle(26, 58, 18);
+  g.fillCircle(102, 58, 18);
+  g.fillCircle(34, 98, 16);
+  g.fillCircle(64, 104, 18);
+  g.fillCircle(94, 98, 16);
+  g.fillStyle(0x5a2418);
+  g.fillEllipse(64, 70, 96, 52);
+  g.fillCircle(48, 54, 16);
+  g.fillCircle(80, 54, 16);
+
+  // heat-lit rust highlights on top
+  g.fillStyle(0x7a3420, 0.7);
+  g.fillEllipse(46, 52, 38, 13);
+  g.fillEllipse(88, 54, 30, 12);
+
+  // charred shadow crags
+  g.fillStyle(0x1c0d08);
+  g.fillEllipse(38, 68, 20, 12);
+  g.fillEllipse(92, 62, 16, 10);
+
+  // glowing lava cracks veining the body (orange → yellow, many of them)
+  g.lineStyle(3, 0xff8a2a, 1);
+  g.lineBetween(40, 54, 30, 96);
+  g.lineBetween(40, 70, 24, 74);
+  g.lineBetween(90, 54, 100, 96);
+  g.lineBetween(90, 70, 104, 74);
+  g.lineBetween(64, 98, 60, 112);
+  g.lineBetween(52, 82, 40, 104);
+  g.lineBetween(76, 82, 88, 104);
+  g.lineStyle(2, 0xffd24a, 0.95);
+  g.lineBetween(41, 56, 33, 88);
+  g.lineBetween(89, 56, 97, 88);
+  g.lineBetween(64, 100, 62, 110);
+
+  // heavy charcoal brows
+  g.fillStyle(0x160a06);
+  g.fillTriangle(34, 56, 60, 66, 60, 60);
+  g.fillTriangle(94, 56, 68, 66, 68, 60);
+
+  // glowing molten-orange eyes
+  g.fillStyle(0xff8a2a, 0.4);
+  g.fillCircle(48, 70, 13);
+  g.fillCircle(80, 70, 13);
+  g.fillStyle(0xffd24a);
+  g.fillCircle(48, 70, 8);
+  g.fillCircle(80, 70, 8);
+  g.fillStyle(0x5a1400);
+  g.fillCircle(48, 72, 4);
+  g.fillCircle(80, 72, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(46, 68, 2);
+  g.fillCircle(78, 68, 2);
+
+  // wide gaping magma maw with a glowing throat
+  g.fillStyle(0x120604);
+  g.fillEllipse(64, 96, 56, 20);
+  g.fillStyle(0xff8a2a, 0.85);
+  g.fillEllipse(64, 98, 40, 12);
+  g.fillStyle(0xffd24a);
+  g.fillEllipse(64, 99, 22, 7);
+  // rock fangs framing the maw
+  g.fillStyle(0x2a140c);
+  g.fillTriangle(42, 88, 50, 88, 46, 100);
+  g.fillTriangle(78, 88, 86, 88, 82, 100);
+  g.fillTriangle(58, 106, 66, 106, 62, 94);
+}
+
+// THE SUNFORGE SENTINEL — a sun-forged metallic guardian crowned with a blazing solar corona.
+function drawSunforgeSentinel(g: Phaser.GameObjects.Graphics): void {
+  // radiant solar corona of flare-spikes fanning out — the silhouette gimmick
+  const flare = (a: number, len: number, w: number) => {
+    const cx = 64, cy = 60;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const px = -dy, py = dx;
+    g.fillTriangle(
+      cx + dx * len, cy + dy * len,
+      cx + px * w, cy + py * w,
+      cx - px * w, cy - py * w
+    );
+  };
+  g.fillStyle(0xffe27a);
+  for (let i = 0; i < 11; i++) {
+    const a = -Math.PI + (i / 10) * Math.PI; // upper fan
+    flare(a, 60, 7);
+  }
+  g.fillStyle(0xfff3c4, 0.9);
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI + (i / 5) * Math.PI;
+    flare(a, 52, 3.5);
+  }
+
+  // molten-metal guardian body (scorched bronze lumps)
+  g.fillStyle(0x8a7a5c);
+  g.fillEllipse(64, 76, 112, 74);
+  g.fillCircle(28, 58, 17);
+  g.fillCircle(100, 58, 17);
+  g.fillCircle(64, 104, 18);
+  g.fillStyle(0x6f6046, 0.9);
+  g.fillEllipse(64, 92, 96, 34);
+
+  // polished hot highlights on the metal
+  g.fillStyle(0xd8c090, 0.75);
+  g.fillEllipse(46, 52, 36, 13);
+  g.fillEllipse(88, 54, 28, 11);
+  g.fillStyle(0xfff3c4, 0.5);
+  g.fillEllipse(50, 50, 18, 6);
+
+  // riveted seam shadow lines
+  g.fillStyle(0x4c3f2a);
+  g.fillEllipse(38, 68, 18, 11);
+  g.fillEllipse(92, 62, 15, 9);
+  g.lineStyle(2, 0x4c3f2a, 0.9);
+  g.lineBetween(64, 46, 64, 88);
+
+  // forge-glow vent seam across the chest
+  g.lineStyle(4, 0xffb648, 0.95);
+  g.lineBetween(38, 88, 90, 88);
+  g.lineStyle(2, 0xfff3c4, 0.95);
+  g.lineBetween(40, 88, 88, 88);
+  g.fillStyle(0xffe27a, 0.5);
+  g.fillEllipse(64, 88, 44, 8);
+
+  // heavy bronze brows
+  g.fillStyle(0x5c4d30);
+  g.fillTriangle(34, 56, 60, 66, 60, 60);
+  g.fillTriangle(94, 56, 68, 66, 68, 60);
+
+  // blazing white-gold eyes with an extra outer halo ring (finale treatment)
+  g.fillStyle(0xffe27a, 0.22);
+  g.fillCircle(48, 70, 18);
+  g.fillCircle(80, 70, 18);
+  g.fillStyle(0xffb648, 0.45);
+  g.fillCircle(48, 70, 13);
+  g.fillCircle(80, 70, 13);
+  g.fillStyle(0xfff3c4);
+  g.fillCircle(48, 70, 8);
+  g.fillCircle(80, 70, 8);
+  g.fillStyle(0x4a2e00);
+  g.fillCircle(48, 72, 4);
+  g.fillCircle(80, 72, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(46, 68, 2.4);
+  g.fillCircle(78, 68, 2.4);
+
+  // glowing forge maw
+  g.fillStyle(0x2a1c08);
+  g.fillEllipse(64, 100, 48, 14);
+  g.fillStyle(0xffb648, 0.9);
+  g.fillEllipse(64, 100, 34, 9);
+  g.fillStyle(0xfff3c4);
+  for (let i = 0; i < 5; i++) {
+    const x = 47 + i * 8.5;
+    g.fillTriangle(x, 95, x + 6, 95, x + 3, 103);
+  }
+}
+
 const BOSS_ART: Record<string, (g: Phaser.GameObjects.Graphics) => void> = {
   'the-moonster': drawMoonster,
   'the-red-baron': drawRedBaron,
@@ -1136,6 +1312,8 @@ const BOSS_ART: Record<string, (g: Phaser.GameObjects.Graphics) => void> = {
   'cryovex-shard-king': drawCryovexShardKing,
   'maelstrom-warden': drawMaelstromWarden,
   'the-kuiper-warden': drawKuiperWarden,
+  'magmaw-cave-tyrant': drawMagmaw,
+  'sunforge-sentinel': drawSunforgeSentinel,
 };
 
 /** Build (or reuse) a boss's sprite. Falls back to the generic blob for unknown ids. */

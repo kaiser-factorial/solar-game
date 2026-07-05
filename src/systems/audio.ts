@@ -18,7 +18,7 @@ export type SfxName =
   | 'boss'
   | 'denied';
 
-export type TrackName = 'moon' | 'mars' | 'earth' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'map';
+export type TrackName = 'moon' | 'mars' | 'earth' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'venus' | 'mercury' | 'map';
 
 type Note = [beat: number, midi: number, lenBeats: number];
 interface VoiceDef {
@@ -322,6 +322,77 @@ const PLUTO: TrackDef = {
   hat: Array.from({ length: 16 }, (_, i) => i),
 };
 
+// VENUS — heavy, ominous, volcanic-underground. Slow C-minor with a rumbling
+// low bass, a sparse brooding lead, and distant high "drip" notes echoing in
+// the cavern. Oppressive and cavernous.
+const VENUS: TrackDef = {
+  bpm: 100,
+  beats: 16,
+  voices: [
+    {
+      type: 'sawtooth',
+      vol: 0.11,
+      notes: [
+        [0, 24, 2], [2, 24, 1], [3, 31, 1],
+        [4, 27, 2], [6, 27, 1], [7, 22, 1],
+        [8, 24, 2], [10, 24, 1], [11, 31, 1],
+        [12, 20, 2.5], [14.5, 27, 1.5],
+      ],
+    },
+    {
+      type: 'triangle',
+      vol: 0.13,
+      notes: [
+        [0, 60, 2.5], [3, 63, 1], [4, 67, 2],
+        [7, 63, 1], [8, 60, 2], [10.5, 58, 1.5],
+        [12, 55, 2], [14, 60, 2],
+      ],
+    },
+    {
+      type: 'square',
+      vol: 0.05, // distant cavern "drips"
+      notes: [[2.75, 84, 0.2], [6.5, 87, 0.2], [10.25, 82, 0.2], [13.5, 79, 0.25]],
+    },
+  ],
+  hat: [0, 4, 8, 12],
+};
+
+// MERCURY — intense, bright-hot, solar. Fast E-minor with a busy driving bass,
+// shimmering high square arpeggios, and a near-full hat. Blazing and urgent.
+const mercuryBass: Note[] = [];
+[28, 28, 31, 26].forEach((root, bar) => {
+  for (let i = 0; i < 8; i++) {
+    mercuryBass.push([bar * 4 + i * 0.5, i % 4 === 2 ? root + 7 : root, 0.4]);
+  }
+});
+const MERCURY: TrackDef = {
+  bpm: 126,
+  beats: 16,
+  voices: [
+    { type: 'sawtooth', vol: 0.1, notes: mercuryBass },
+    {
+      type: 'square',
+      vol: 0.13,
+      notes: [
+        [0, 76, 0.5], [0.5, 79, 0.5], [1, 83, 0.5], [1.5, 79, 0.5],
+        [2, 76, 0.5], [2.5, 83, 0.5], [3, 88, 0.5], [3.5, 83, 0.5],
+        [4, 74, 0.5], [4.5, 79, 0.5], [5, 83, 0.5], [5.5, 79, 0.5],
+        [6, 74, 0.5], [6.5, 81, 0.5], [7, 86, 0.5], [7.5, 81, 0.5],
+        [8, 76, 0.5], [8.5, 79, 0.5], [9, 83, 0.5], [9.5, 79, 0.5],
+        [10, 76, 0.5], [10.5, 83, 0.5], [11, 88, 0.5], [11.5, 91, 0.5],
+        [12, 74, 0.5], [12.5, 81, 0.5], [13, 86, 0.5], [13.5, 81, 0.5],
+        [14, 76, 0.5], [14.5, 83, 0.5], [15, 88, 1],
+      ],
+    },
+    {
+      type: 'triangle',
+      vol: 0.07, // hot high sparkle
+      notes: [[1, 95, 0.2], [3, 98, 0.2], [5, 95, 0.2], [7, 100, 0.2], [9, 95, 0.2], [11, 98, 0.2], [13, 100, 0.2], [15, 103, 0.3]],
+    },
+  ],
+  hat: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12.5, 13, 14, 15, 15.5],
+};
+
 // STAR MAP — gentle Cmaj7 twinkle for planning your next hop.
 const mapArp: Note[] = Array.from({ length: 16 }, (_, i) => [
   i,
@@ -350,6 +421,8 @@ const TRACKS: Record<TrackName, TrackDef> = {
   uranus: URANUS,
   neptune: NEPTUNE,
   pluto: PLUTO,
+  venus: VENUS,
+  mercury: MERCURY,
   map: MAP,
 };
 
